@@ -1,4 +1,4 @@
-# 🏠 AI House Map Planner
+# 🏠 AI house map planner
 
 ![TypeScript](https://img.shields.io/badge/Language-TypeScript-blue)
 ![Next.js](https://img.shields.io/badge/Framework-Next.js%2016-black)
@@ -7,7 +7,7 @@
 ![License](https://img.shields.io/badge/License-Private-red)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 
-Instant proportional 2D house blueprint drafts with Vastu alignment and custom plot dimensions
+Proportional residential 2D floor plan generation with structural staircase vertical locking and Vastu Shastra orientation rules
 
 ---
 
@@ -32,24 +32,30 @@ Instant proportional 2D house blueprint drafts with Vastu alignment and custom p
 
 ## Project overview
 
-AI House Map Planner is a web-based drafting tool designed specifically for Indian individual plot owners to visualize residential layouts. The application takes custom plot width and depth inputs in feet, orientation angles, and basic layout desires, producing a proportional 2D structural draft with architectural symbols like doors, window apertures, and scale indicators. It solves the costly gap between initial home ideation and architectural consultation by letting users instantly draft layouts that conform to basic Vastu Shastra orientation principles.
+AI house map planner is a web-based layout drafting tool designed for individual plot owners to visualize proportional residential floor plans. The application maps custom plot widths and depths in feet alongside orientation directions, producing architectural drawings with door placements, window apertures, and scale indicators. It addresses the cost overhead and design friction of early-stage home building by enabling users to iterate on draft layouts that conform to traditional Vastu Shastra guidelines before hiring drafting professionals.
 
-***This application exists to save home builders time and money by enabling rapid visual layout validation before engaging paid professional drafting services.***
+***This application serves as an instant structural plan visualizer that accelerates early layout validation for homebuilders, mitigating architectural design iterations and overhead costs.***
 
 ---
 
 ## Live demo and visuals
 
-The application is run locally. Below are placeholder outlines representing the visual workspace layout:
+This application runs locally. The following graphics represent the dashboard panels and canvas interface of the editor:
 
-![Main Dashboard Layout](./screenshots/main_dashboard.png)
+![Main dashboard workspace](./screenshots/dashboard_layout.png)
 *Figure 1: Main layout generator screen showing dimensions configuration, engine switches, and coordinate canvas.*
 
-![Multi-floor tabs navigation](./screenshots/multi_floor_view.png)
+![Multi-floor editor canvas](./screenshots/multi_floor_editor.png)
 *Figure 2: Multi-floor draft view displaying the first-floor layout with locked staircase coordinates.*
 
 > [!NOTE]
-> Developers: Please replace the placeholder references in `./screenshots/` with real images of the running client layout after configuring the local setup.
+> Developers: Replace the placeholder references in the `./screenshots/` directory with actual screenshots of your running application once you have completed the local installation.
+
+To run and see the application locally, execute the development command:
+```bash
+npm run dev
+```
+Then navigate to `http://localhost:3000` in your web browser.
 
 ---
 
@@ -57,74 +63,80 @@ The application is run locally. Below are placeholder outlines representing the 
 
 | Technology | Version | Category | Why Chosen |
 | :--- | :--- | :--- | :--- |
-| Next.js | 16.2.9 | Core | Full-stack server side rendering capabilities permit securing sensitive Google Gemini API credentials in server-only route files. |
-| React | 19.2.4 | Core | Component model separation facilitates rebuilding the visual vector canvas viewport based on state updates. |
-| TypeScript | 5.x | Core | Strong typings guarantee that coordinates and room objects conform to geometric boundaries prior to execution. |
-| Tailwind CSS | 4.x | Styling | Utility class styling speeds up dashboard layout modifications without writing custom external stylesheets. |
-| Google Generative AI | 0.24.1 | Storage & APIs | Official SDK provider for Gemini APIs supports structured schema generation configurations natively. |
-| SVG | latest | Data Viz | Native web vector graphics prevent canvas pixelation on zoom, allowing users to inspect doors and labels clearly. |
-| Lucide React | 1.18.0 | Styling | Icon set containing simple vector outlines for dashboard buttons and toggles. |
+| Next.js | 16.2.9 | Core | Executes API endpoints server-side to prevent exposing the Google Generative AI credentials to the client browser. |
+| React | 19.2.4 | Core | Performs differential DOM rendering to sync the interactive canvas coordinate state shifts efficiently. |
+| TypeScript | 5.x | Core | Imposes static type safety over layout shapes, coordinate arrays, and user options to eliminate runtime reference errors. |
+| Tailwind CSS | 4.x | Styling | Compiles a minimized single CSS bundle containing styling utility classes, reducing the total document weight. |
+| Google Generative AI | 0.24.1 | Storage & APIs | Provides the official SDK to connect Next.js routes to the Gemini API, supporting structured JSON schema responses. |
+| SVG | latest | Data Viz | Renders top-down orthogonal lines, doors, and furniture symbols natively in the browser without resolution loss during canvas scaling. |
+| Lucide React | 1.18.0 | Styling | Imports lightweight SVG icon elements dynamically, facilitating layout indicators and action buttons. |
+| ESLint | 9.x | Dev Tools | Enforces code standards and formatting conventions during pre-commit checks, catching unused imports and variables. |
 
 ---
 
 ## Core features
 
 ### Multi-floor layout generation ⭐
-- **What it does**: Generates multi-level residential layouts (up to 3 floors) locking the staircase footprint from the ground floor layout.
-- **User experience**: The user configures their desired number of stories in the options panel, generates the ground floor, and switches tabs to render upper stories which lazily request alignment-locked blueprints.
-  - Staircase placement coordinates remain identical across all floors.
-  - Upper stories swap ground-floor features like parking or kitchens for spaces like balconies and family lounges.
+- **What it does**: Generates vertically-aligned multi-story blueprints (up to 3 levels) locking the staircase footprint.
+- **User experience**: Users choose the number of stories via the settings panel, design the ground level, and swap tabs to lazily construct subsequent stories with locked staircase boundaries.
+  - Staircase coordinates are shared and remain fixed across all floors to maintain structural vertical alignment.
+  - Floor transitions dynamically swap ground-level zones like parking and main kitchens for balconies and lounges on upper levels.
 
 ### High-resolution SVG/PNG exporter ⭐
-- **What it does**: Exports client-side vector files and super-samples graphics onto a canvas context for PNG downloads.
-- **User experience**: Users click "Export SVG" or "Export PNG" in the canvas toolbar, triggering browser file downloads containing the detailed visual room layouts and dimensions.
+- **What it does**: Compiles client-side vector files and super-samples graphics onto a canvas context for PNG downloads.
+- **User experience**: Users click the download toolbar buttons to retrieve scalable vector or high-resolution raster plan files.
+  - SVG export packages the canvas node into a standalone XML vector file containing styles.
+  - PNG export draws elements onto an offscreen canvas at a 4x resolution scale factor, outputting sharp raster graphics.
 
 ### Vastu Shastra layout alignment ⭐
-- **What it does**: Arranges rooms according to traditional Indian directional guidelines (e.g. Master Bedroom in South-West, Kitchen in South-East).
-- **User experience**: Users toggle the "Apply Vastu" switch in the form options, prompting the layout generators to prioritize placing essential spaces in their traditional quadrants.
-  - A 3x3 Red grid line overlay is accessible by clicking the "Vastu Grid" button on the canvas toolbar to verify alignment.
+- **What it does**: Applies traditional orientation guidelines to quadrant calculations for room and door offsets.
+- **User experience**: Users enable the guidelines switch to prioritize positioning master bedrooms in the southwest and kitchens in the southeast, with a toggleable 3x3 overlay grid for verification.
+  - Vastu orientation coordinates align according to the cardinal direction facing the main access road.
+  - Built-in grid overlay allows structural inspection of quadrant alignments in real time.
 
 ### Adaptive room sizing guidelines
-- **What it does**: Sizes room dimensions proportionally to the total plot area when dimensions are modified.
-- **User experience**: The user drags range sliders to scale plot dimensions, and the layout engine automatically adjusts target bedroom and living room boundaries to fit usable setbacks.
+- **What it does**: Adjusts target room footprints dynamically when total plot width or length limits are changed.
+- **User experience**: Users adjust the dimension sliders, and the generator instantly calculates setback boundaries to partition remaining areas proportionally.
 
 ---
 
 ## Architecture and project structure
 
-This application uses a full-stack Next.js single-page application structure. The client frontend communicates directly with Next.js App Router API route handlers, which route coordinate generation requests to the Gemini LLM or the local rules engine, perform boundary verification, and send back layout payloads for SVG canvas rendering.
+The application is structured as a client-server single-page Next.js web application. The React client captures plot parameters and forwards them via POST requests to the API route handler, which determines if layout generation should run locally via procedural math rule files or server-side via Gemini API calls, validating all coordinates before returning the payload.
 
 ```
 .
-├── .env.local                  # Local environment variables including Gemini keys
+├── .env.local                  # Local environment variables including Gemini API key
 ├── AGENTS.md                   # Instructions and rules for assistant engines
-├── CLAUDE.md                   # CLI command reference guide
-├── README.md                   # Detailed technical documentation and walkthrough guide
+├── CLAUDE.md                   # Reference commands list
 ├── eslint.config.mjs           # Code linter rules configuration
-├── next.config.ts              # Next.js framework configuration
-├── package.json                # Project npm package dependency listing
-├── postcss.config.mjs          # Tailwind CSS style processing config
-├── tailwind.config.ts          # Styling theme configurations
-├── tsconfig.json               # TypeScript path compiler settings
-├── app/                        # Next.js App Router container
-│   ├── globals.css             # Root styles and global CSS color tokens
-│   ├── layout.tsx              # Root HTML wrapper document structure
-│   ├── page.tsx                # Main single-page application dashboard state controller 🌟
-│   └── api/                    # Server-side API endpoints
+├── next-env.d.ts               # Next.js TypeScript declarations
+├── next.config.ts              # Next.js compilation settings
+├── package.json                # Project dependencies and runner scripts
+├── postcss.config.mjs          # CSS post-processing rules
+├── README.md                   # Technical documentation and project walkthrough guide
+├── tsconfig.json               # TypeScript compiler config
+├── app/                        # Next.js App Router root directory
+│   ├── favicon.ico             # Browser tab icon asset
+│   ├── globals.css             # Base CSS styles and theme variables
+│   ├── layout.tsx              # Root HTML layout container
+│   ├── page.tsx                # Main application dashboard controller managing reactive floor states 🌟
+│   └── api/                    # API route handlers
 │       └── generate/           # Sizing route
-│           └── route.ts        # Next.js API handler connecting to Gemini API and validator logic
-├── components/                 # React UI elements
-│   ├── FloorPlanCanvas.tsx     # Canvas rendering vector elements (walls, furniture) and download actions
-│   └── InputForm.tsx           # Plot details input settings panel and layout preset buttons
-├── lib/                        # Common business logic modules
-│   ├── generator.ts            # Procedural blueprint math rules and room placement algorithms
-│   ├── types.ts                # TypeScript interface declarations
-│   └── validator.ts            # Geometric layout checker testing room overlaps and plot boundaries
-└── public/                     # Static static files
-    ├── file.svg                # Vector file icon asset
-    ├── globe.svg               # Vector globe layout asset
-    ├── next.svg                # Next.js logo graphics
-    └── vercel.svg              # Vercel deployment graphics
+│           └── route.ts        # Next.js POST handler calling Gemini or local generators and validating plans
+├── components/                 # React user interface components
+│   ├── FloorPlanCanvas.tsx     # Canvas rendering vector elements, Vastu grid lines, and download actions
+│   └── InputForm.tsx           # Settings panel containing plot configuration sliders and presets
+├── lib/                        # Math libraries and verification utilities
+│   ├── generator.ts            # Procedural math layouts for ground and upper levels with staircase locks
+│   ├── types.ts                # Shared TypeScript structures for PlotInputs, Room, Door, and FloorPlan
+│   └── validator.ts            # Geometric room overlap and plot boundary constraint evaluator
+└── public/                     # Static assets directory
+    ├── file.svg                # File logo indicator
+    ├── globe.svg               # Web globe icon
+    ├── next.svg                # Next.js logo
+    ├── vercel.svg              # Vercel deployment logo
+    └── window.svg              # Window logo indicator
 ```
 
 ---
@@ -132,23 +144,25 @@ This application uses a full-stack Next.js single-page application structure. Th
 ## State management and data flow
 
 ### State management
-State is managed locally within the parent `Home` component in `app/page.tsx` using standard React hooks:
-- `floors`: An array containing up to three `FloorPlan` objects or `null` (representing Ground, First, and Second floors).
-- `activeFloor`: An integer index tracking which story is currently rendered on the canvas.
+
+State is centralized in the parent component [app/page.tsx](file:///c:/Users/ANIKET/Desktop/Aihouseplan/app/page.tsx) using React hooks. The application state stores inputs, floor plans, the current floor tab, loading states, and the locked engine type. This guarantees that coordinate updates immediately propagate to the canvas drawing interface.
+
+- `floors`: An array containing up to three [FloorPlan](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/types.ts) objects or `null` representing ground, first, and second floors.
+- `activeFloor`: An integer index tracking the active layout level rendered on the canvas view.
 - `lockedEngine`: A state lock storing `"ai"` or `"procedural"` once generation starts, preventing mismatching layout rules.
 
 ### Data flow walkthrough — generating layout plans
-1. The user configures dimension ranges and selects "Gemini AI" inside the `components/InputForm.tsx` panel.
-2. Clicking the "Generate Design Plan" button triggers `handleSubmit` inside `components/InputForm.tsx`.
-3. `handleSubmit` invokes the parent `onSubmit` callback, passing the form data to `handleGenerate` in `app/page.tsx`.
-4. `handleGenerate` resets `floors` state to `[null, null, null]`, resets `activeFloor` to `0`, and requests the ground floor layout.
-5. A POST request is fired to `/api/generate` with the body containing options and `floor: 0`.
-6. The API handler in `app/api/generate/route.ts` parses the JSON body.
-7. Finding a configured `GEMINI_API_KEY`, it calls `gemini-2.5-flash` model, passing the customized Vastu system guidelines and requesting a structured JSON response matching the schema.
-8. Upon receiving the layout response, the handler calls `validateFloorPlan` in `lib/validator.ts` to check that no rooms overlap or exceed boundaries.
-9. If validation passes, the handler responds to the client with `mode: "ai"`.
-10. `handleGenerate` receives the payload, saves it to `floors[0]`, sets `lockedEngine` to `"ai"`, and updates the DOM.
-11. The updated state array triggers a rerender of `components/FloorPlanCanvas.tsx`, drawing the room blocks, doors, windows, and furniture details.
+
+1. The user selects plot dimensions and orientation inputs in [components/InputForm.tsx](file:///c:/Users/ANIKET/Desktop/Aihouseplan/components/InputForm.tsx) and clicks the generation action button, calling [handleSubmit](file:///c:/Users/ANIKET/Desktop/Aihouseplan/components/InputForm.tsx).
+2. [handleSubmit](file:///c:/Users/ANIKET/Desktop/Aihouseplan/components/InputForm.tsx) triggers the callback prop `onSubmit`, forwarding a [PlotInputs](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/types.ts) object to [handleGenerate](file:///c:/Users/ANIKET/Desktop/Aihouseplan/app/page.tsx) in [app/page.tsx](file:///c:/Users/ANIKET/Desktop/Aihouseplan/app/page.tsx).
+3. [handleGenerate](file:///c:/Users/ANIKET/Desktop/Aihouseplan/app/page.tsx) updates the `isLoading` state to true, clears the `floors` state array to `[null, null, null]`, resets `activeFloor` to `0`, and triggers a POST request to the server route `/api/generate` with the parameters and `floor: 0`.
+4. The handler inside [app/api/generate/route.ts](file:///c:/Users/ANIKET/Desktop/Aihouseplan/app/api/generate/route.ts) parses the JSON payload.
+5. If the request calls for the procedural engine or lacks a `GEMINI_API_KEY` environment variable, the handler invokes [generateLocalLayout](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/generator.ts) inside [lib/generator.ts](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/generator.ts).
+6. If the request calls for the AI engine, the handler initializes `GoogleGenerativeAI`, connects to the `gemini-2.5-flash` model, passes the system prompt configurations enforcing the schema, and extracts the generated JSON coordinates.
+7. The coordinates are parsed and evaluated by [validateFloorPlan](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/validator.ts) in [lib/validator.ts](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/validator.ts).
+8. If validation fails, the handler falls back to procedural rules by calling [generateLocalLayout](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/generator.ts). If it passes, it returns the generated JSON array.
+9. [handleGenerate](file:///c:/Users/ANIKET/Desktop/Aihouseplan/app/page.tsx) updates the `floors` state array with the new floor coordinates, locks the generator engine state, and resets `isLoading` to false.
+10. The updated `floors` state triggers a canvas redraw inside [components/FloorPlanCanvas.tsx](file:///c:/Users/ANIKET/Desktop/Aihouseplan/components/FloorPlanCanvas.tsx).
 
 ---
 
@@ -156,13 +170,12 @@ State is managed locally within the parent `Home` component in `app/page.tsx` us
 
 ### Generate layout plan
 
-Generates coordinates for rooms, doors, and windows based on plot boundaries and options.
+Generates coordinates for rooms, doors, and windows based on plot size, orientation, and engine requirements.
 
 - **Method**: `POST`
 - **Endpoint**: `/api/generate`
 - **Request headers**: `Content-Type: application/json`
 - **Request body**:
-
 ```json
 {
   "lengthFt": 30,
@@ -185,9 +198,7 @@ Generates coordinates for rooms, doors, and windows based on plot boundaries and
   "staircase": null
 }
 ```
-
 - **Response body (200 OK)**:
-
 ```json
 {
   "success": true,
@@ -217,107 +228,141 @@ Generates coordinates for rooms, doors, and windows based on plot boundaries and
 ## Local installation and setup
 
 ### Prerequisites
-- Node.js (version v18.0.0 or higher)
-- npm (version v9.0.0 or higher)
+
+- Node.js version 18.0.0 or higher
+- npm version 9.0.0 or higher
 
 ### Setup steps
 
-1. Clone the repository to your local machine:
+1. Clone the project files:
    ```bash
    git clone https://github.com/itsrajaniket/aihouseplanner.git
    ```
 
-2. Navigate into the project directory:
+2. Navigate to the project root directory:
    ```bash
    cd aihouseplanner
    ```
 
-3. Install the required NPM packages:
+3. Install dependencies:
    ```bash
    npm install
    ```
 
-4. Create a `.env.local` file in the root folder to store your API credentials:
+4. Create a `.env.local` file inside the root folder:
    ```bash
    echo GEMINI_API_KEY=your_gemini_api_key_here > .env.local
    ```
-   *(Be sure to replace `your_gemini_api_key_here` with a valid key generated from Google AI Studio)*
 
-5. Start the local Next.js development server:
-   ```bash
-   npm run dev
-   ```
+### Environment variables
+
+For connection to the AI engine model endpoints, you must save your developer credentials:
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+### Running in development
+
+To execute the project in development mode:
+```bash
+npm run dev
+```
+
+### Running in production
+
+To build and run the optimized application bundle:
+```bash
+npm run build
+```
+```bash
+npm run start
+```
 
 ### Verification
-Open `http://localhost:3000` in your web browser. You should see the dashboard with settings on the left and a rendered drafting canvas on the right showing the default procedural plot layout.
+
+Open `http://localhost:3000` in your web browser. You should see the user settings panel and canvas, showing the initial layout blueprint rendered.
 
 ---
 
 ## Configuration and customization
 
 ### Usable margin adjustments
-To edit the outer Visual Setback Margin surrounding the rooms, open `lib/generator.ts` and modify the variable `S` on line 33:
 
+To modify the outer setback margin surrounding the rooms, open [lib/generator.ts](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/generator.ts) and modify the variable `S` on line 33:
 ```typescript
-// Modify S value (defaults to 1.5 feet)
-const S = 1.5; // Change this value to adjust the outer setback margin
+// Change setback margins surrounding outer rooms (default 1.5 ft)
+const S = 1.5;
 ```
 
 ### Minimum size bounds for rooms
-To adjust the strict room dimension scaling constraints in the rules engine, modify the sizing limits in `lib/generator.ts` under the respective room assignment blocks:
 
+To adjust the coordinate scaling constraints in the local layout engine, modify the sizing limits in [lib/generator.ts](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/generator.ts) under the respective room assignment blocks:
 ```typescript
-// Sizing limits in lib/generator.ts
-const kitchenW = snap(clamp(uW * 0.30, 8, 12)); // Change min/max bounds (8, 12) to scale kitchen sizing
+// Adjust maximum and minimum scaling constraints
+const kitchenW = snap(clamp(uW * 0.30, 8, 12));
+```
+
+### SVG scale unit configurations
+
+To alter the SVG canvas scaling factor, edit the constant inside [components/FloorPlanCanvas.tsx](file:///c:/Users/ANIKET/Desktop/Aihouseplan/components/FloorPlanCanvas.tsx):
+```typescript
+// Change coordinates scale units calculation (default 20 SVG units = 1 foot)
+const SCALE = 20;
 ```
 
 ---
 
 ## Known limitations and troubleshooting
 
-### Sizing overlaps under AI engine
-- **Description**: The Gemini model may sometimes return coordinates that slightly overlap or exceed boundary margins.
-- **Troubleshooting**: The backend automatically validates coordinates using `validateFloorPlan` inside `lib/validator.ts` and falls back to the clean procedural generator layout if overlaps are detected. Toggle the design engine back to "Instant Rules" if you require structured grid alignment.
+### Known limitations
+
+- **Predefined set of rooms**: The generator coordinates layout positions for fixed room identifiers (e.g. `living`, `kitchen`, `bedroom-master`, `staircase`) and does not support arbitrary custom labels.
+- **Staircase placement lock**: While upper levels lock staircase coordinates vertically to prevent structure mismatches, the initial staircase placement on the ground level is set dynamically by the algorithm and cannot be dragged manually.
+- **Floating point rounding offsets**: Snapping math rounding coordinates to 0.5 ft increments can shift room coordinates by up to 0.1 ft, occasionally triggering boundary validation alerts under AI engine layout models.
+- **Orthogonal 2D layout constraints**: Layout outlines are limited to orthogonal 2D dimensions and do not calculate wall thickness, foundation structure beams, plumbing channels, or 3D elevations.
 
 ### Common errors and solutions
 
 | Error / Symptom | Likely Cause | Fix |
 | :--- | :--- | :--- |
-| `API Request Failed` message in UI | The Gemini API key is missing or invalid in `.env.local`. | Verify your Gemini API key in Google AI Studio and ensure it is saved under `GEMINI_API_KEY` in `.env.local`. |
-| Coordinates do not update on slider changes | Browser JavaScript execution is halted or a React state error occurred. | Refresh the page to reset the React active states. |
-| Model returns 404 on API calls | The codebase is calling a model version not associated with your API key. | Ensure `model` in `app/api/generate/route.ts` is configured to `gemini-2.5-flash` or another model supported by your key. |
+| `API Request Failed` warning in UI dashboard | The Gemini API key is missing or invalid in the environment file. | Create `.env.local` in the project root and add `GEMINI_API_KEY=your_gemini_api_key_here` with a valid key. |
+| Upper floor layouts mismatch ground floor staircase positions | Generating subsequent floor levels before the ground floor has completed processing or switching design engine mid-session. | Generate the ground floor first. The UI locks the engine selector option once the design session begins. |
+| Rendered room text labels are too small or overlap boundaries | Viewport scaling constraints squeeze SVG text dimensions on small screen sizes. | View the blueprint using the built-in fullscreen modal to expand canvas dimensions. |
+| PNG layout exports are blurry or pixelated | Downloading raw screen viewport scaling sizes without canvas resolution rendering. | Use the export PNG button on the canvas toolbar which uses a `4x` scale factor to output high-resolution graphics. |
 
 ---
 
 ## Security and privacy notes
 
 - **Credential storage**: The `GEMINI_API_KEY` is loaded from a local environment file `.env.local` and processed server-side in Next.js API route handlers. It is never exposed, logged, or sent to the client browser.
-- **Data tracking**: Plot size dimensions and form configurations are parsed in memory on the server. No databases are used, and no user inputs are permanently logged or sent to third-party endpoints (other than coordinates generation queries sent directly to Google Gemini APIs).
+- **Data storage & tracking**: No user configuration inputs, plot sizes, or layout calculations are stored in databases. All configurations are handled in-memory and discarded upon closing the tab session. No analytics tracking code is active in the codebase.
+- **Third-party transmission**: Generating layout coordinates via the AI engine sends plot boundaries, selected rooms, and style choices directly to Google Gemini API servers.
+- **API limits warning**: Under heavy rate-limiting on Gemini developer API keys, the application automatically falls back to local rules-based procedural layouts ([lib/generator.ts](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/generator.ts)) to ensure the workspace remains responsive.
 
 ---
 
 ## Future roadmap
 
-- [x] Multi-floor layouts locking the staircase coordinate position across floors
-- [x] High-resolution SVG/PNG image export options
-- [x] Visual 3x3 Vastu grid overlay guides
-- [ ] Drag-and-drop room adjustments directly on the interactive SVG canvas
-- [ ] FSI/FAR municipal building bye-law compliance validation calculator
-- [ ] 3D visualization exporter utilizing WebGL canvas libraries
-- [ ] URL-based plan sharing with unique URL generation
-- [ ] PDF blueprint documentation compiler with room area legends
+- [x] Integrate multi-floor tabs supporting up to 3 stories with locked staircase coordinates
+- [x] Implement client-side high-resolution PNG canvas exporter with super-sampling
+- [x] Add visual Vastu grid guide lines overlay toggle in canvas workspace
+- [ ] Add interactive drag-and-drop room sizing handlers directly on the canvas SVG element
+- [ ] Create structural columns and plumbing stack layout recommendation markers
+- [ ] Add a municipal FAR (Floor Area Ratio) compliance checking calculator panel
+- [ ] Integrate 3D visualization model views utilizing Three.js or WebGL canvas renderers
 
 ---
 
 ## Contributing
 
 1. Fork the repository on GitHub.
-2. Create a feature branch matching our naming rules:
-   - For features: `feature/short-description`
+2. Create your feature branch following the naming convention:
+   - For new features: `feature/short-description`
    - For bug fixes: `fix/issue-name`
-3. Commit your changes and open a Pull Request.
+3. Commit your changes with clear messages.
+4. Submit a Pull Request to the main branch.
 
-Contributions enhancing coordinate placement math or Vastu Shastra rules are welcome.
+Contributions enhancing layout coordinate mathematical algorithms or Vastu compliance guidelines are welcome.
 
 ---
 
