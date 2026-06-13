@@ -3,14 +3,18 @@ export interface PlotInputs {
   breadthFt: number;         // Plot breadth (feet)
   orientation?: "North" | "South" | "East" | "West" | "Northeast" | "Northwest" | "Southeast" | "Southwest";
   roadFacing?: "North" | "South" | "East" | "West";
-  bedrooms?: number;         // 1 to 4
-  bathrooms?: number;        // 1 to 3
+  bedrooms?: number;         // 1 to 5
+  bathrooms?: number;        // 1 to 4
   parking?: boolean;
   garden?: boolean;
   poojaRoom?: boolean;
   vastu?: boolean;
   style?: "modern" | "traditional" | "minimalist";
   engine: "ai" | "procedural";
+  floors?: number;           // 1 to 3
+  familyType?: "nuclear" | "joint";
+  kitchenType?: "open" | "closed";
+  servantQuarters?: boolean;
 }
 
 export interface Room {
@@ -37,6 +41,7 @@ export interface Window {
 }
 
 export interface FloorPlan {
+  floor: number;             // 0 = ground, 1 = first, 2 = second
   plotLength: number;
   plotBreadth: number;
   rooms: Room[];

@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { PlotInputs, FloorPlan } from "@/lib/types";
-import { generateLocalLayout } from "@/lib/generator";
+import { generateLocalLayout, generateLocalUpperFloorLayout } from "@/lib/generator";
 import { validateFloorPlan } from "@/lib/validator";
 
 export async function POST(req: NextRequest) {
+  let inputs: PlotInputs | null = null;
   try {
-    const inputs: PlotInputs = await req.json();
+    inputs = await req.json();
+    if (!inputs) {
+      return NextResponse.json({ success: false, error: "Missing inputs" }, { status: 400 });
+    }
+    console.log("BACKEND POST /api/generate - RECEIVED INPUTS:", inputs);
     const {
       lengthFt,
       breadthFt,
@@ -19,14 +24,26 @@ export async function POST(req: NextRequest) {
       poojaRoom = false,
       vastu = false,
       style = "modern",
-      engine = "procedural"
-    } = inputs;
+      engine = "procedural",
+      
+      // Multi-floor options
+      floors = 1,
+      familyType = "nuclear",
+      kitchenType = "closed",
+      servantQuarters = false,
+
+      // Upper floor specific options
+      floor = 0,
+      staircase
+    } = inputs as any;
 
     // Check if we want to run procedurally or if API key is missing
     const apiKey = process.env.GEMINI_API_KEY;
     if (engine === "procedural" || !apiKey) {
       console.log("Running local procedural generator (Engine mode or missing API key).");
-      const fallbackLayout = generateLocalLayout(inputs);
+      const fallbackLayout = floor === 0
+        ? generateLocalLayout(inputs)
+        : generateLocalUpperFloorLayout(inputs, floor, staircase);
       return NextResponse.json({
         success: true,
         layout: fallbackLayout,
@@ -37,12 +54,13 @@ export async function POST(req: NextRequest) {
     // Initialize Gemini API
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: {
           type: SchemaType.OBJECT,
           properties: {
+            floor: { type: SchemaType.NUMBER },
             plotLength: { type: SchemaType.NUMBER },
             plotBreadth: { type: SchemaType.NUMBER },
             rooms: {
@@ -99,6 +117,7 @@ export async function POST(req: NextRequest) {
             explanation: { type: SchemaType.STRING }
           },
           required: [
+            "floor",
             "plotLength",
             "plotBreadth",
             "rooms",
@@ -111,7 +130,11 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    const systemPrompt = `You are an expert Indian residential architect and Vastu Shastra consultant.
+    let systemPrompt = "";
+    let userPrompt = "";
+
+    if (floor === 0) {
+      systemPrompt = `You are an expert Indian residential architect and Vastu Shastra consultant.
 Your job is to arrange rooms on a residential plot and return the layout in a strict JSON schema.
 
 Given a plot of size: ${lengthFt} ft (length, X-axis) by ${breadthFt} ft (breadth, Y-axis).
@@ -133,6 +156,16 @@ Configure the layout based on these constraints:
   * Main entrance in the North, East, or North-East.
   * Staircase in the South or West (avoiding the center / Brahmastan).
 
+- Road Facing & Plot Entrance Alignment (CRITICAL):
+  * The front road is on the ${roadFacing} side.
+  * You MUST place the Parking/Porch (if active) and the Living Room directly adjacent to the road side (the ${roadFacing} edge).
+  * You MUST place the Main Door (entrance to the Living Room) on the wall of the Living Room that directly faces the road:
+    - If roadFacing is "North", the Main Door must be on the 'top' wall.
+    - If roadFacing is "South", the Main Door must be on the 'bottom' wall.
+    - If roadFacing is "East", the Main Door must be on the 'right' wall.
+    - If roadFacing is "West", the Main Door must be on the 'left' wall.
+  * Place bedrooms and other private zones towards the back of the house (opposite the road facing side) for noise isolation and privacy.
+
 Output Rules:
 1. All coordinates (x, y) and dimensions (width, height) must be in FEET.
 2. Rooms must NOT overlap. Every room must have a unique position.
@@ -143,7 +176,46 @@ Output Rules:
 
 Return ONLY the JSON matching the schema.`;
 
-    const userPrompt = `Generate the ground floor plan for plot size: ${lengthFt}x${breadthFt} ft.`;
+      userPrompt = `Generate the ground floor plan (floor: 0) for plot size: ${lengthFt}x${breadthFt} ft.`;
+    } else {
+      const stairStr = staircase
+        ? `x: ${staircase.x}, y: ${staircase.y}, width: ${staircase.width}, height: ${staircase.height}`
+        : "x: 24, y: 15, width: 4, height: 9";
+
+      systemPrompt = `You are an expert Indian residential architect and Vastu Shastra consultant.
+Your job is to arrange rooms on the UPPER FLOOR (Floor ${floor}) of a residential building and return the layout in a strict JSON schema.
+
+Given a plot of size: ${lengthFt} ft (length, X-axis) by ${breadthFt} ft (breadth, Y-axis).
+Orientation: ${orientation}.
+Front Road Side: ${roadFacing}.
+
+The staircase position is FIXED and cannot move because it must align with the ground floor:
+* Staircase Coordinates: ${stairStr}
+* You MUST place the staircase room at EXACTLY these coordinates: x = ${staircase?.x ?? 24}, y = ${staircase?.y ?? 15}, width = ${staircase?.width ?? 4}, height = ${staircase?.height ?? 9}. Its ID must be "staircase" and its label must be "Staircase".
+
+Configure the upper floor layout based on these constraints:
+- Usable space: Apply a 1.5 ft margin around the entire boundary. All rooms must fit inside this.
+- Bedrooms: Up to ${bedrooms} bedrooms on this floor (e.g. Master Bedroom, Bedroom 2, Guest Bedroom).
+- Bathrooms: Up to ${bathrooms} bathrooms on this floor.
+- No ground-floor parking or kitchen on this upper floor. Instead, allocate open space for an Open Terrace or Balcony, especially overlooking the road facing side.
+- Include a Family Lounge or lobby near the top of the staircase.
+- Vastu Rules: ${vastu}
+  If Vastu is true, prioritize:
+  * Master Bedroom in the South-West corner.
+  * Bathrooms in the West or North-West.
+  * Balcony / Terrace on the North or East sides.
+
+Output Rules:
+1. All coordinates (x, y) and dimensions (width, height) must be in FEET.
+2. Rooms must NOT overlap.
+3. Provide door and window positions.
+4. Keep the staircase coordinates EXACTLY as specified. Do not shift it by even 0.1 ft.
+5. Provide a short 3-sentence architectural explanation detailing why the upper floor rooms are arranged this way in style '${style}'.
+
+Return ONLY the JSON matching the schema.`;
+
+      userPrompt = `Generate the Floor ${floor} plan for plot size: ${lengthFt}x${breadthFt} ft with staircase fixed at ${stairStr}.`;
+    }
 
     const result = await model.generateContent({
       contents: [
@@ -153,6 +225,28 @@ Return ONLY the JSON matching the schema.`;
 
     const responseText = result.response.text();
     const parsedLayout: FloorPlan = JSON.parse(responseText);
+    parsedLayout.floor = floor; // Ensure floor number matches requested
+
+    // Safeguard: Ensure staircase is in rooms list for rendering if it was only output as staircase object
+    if (parsedLayout.staircase && parsedLayout.staircase.width > 0 && parsedLayout.staircase.height > 0) {
+      if (!parsedLayout.rooms) {
+        parsedLayout.rooms = [];
+      }
+      if (!parsedLayout.rooms.some(r => r.id === "staircase")) {
+        parsedLayout.rooms.push({
+          id: "staircase",
+          label: "Staircase",
+          x: parsedLayout.staircase.x,
+          y: parsedLayout.staircase.y,
+          width: parsedLayout.staircase.width,
+          height: parsedLayout.staircase.height
+        });
+      }
+    }
+
+    // Safeguard: Ensure doors and windows are defined as arrays
+    if (!parsedLayout.doors) parsedLayout.doors = [];
+    if (!parsedLayout.windows) parsedLayout.windows = [];
 
     // Validate the layout before responding
     if (validateFloorPlan(parsedLayout)) {
@@ -163,7 +257,9 @@ Return ONLY the JSON matching the schema.`;
       });
     } else {
       console.warn("Gemini layout failed validation. Falling back to local engine.");
-      const fallbackLayout = generateLocalLayout(inputs);
+      const fallbackLayout = floor === 0
+        ? generateLocalLayout(inputs!)
+        : generateLocalUpperFloorLayout(inputs!, floor, staircase);
       return NextResponse.json({
         success: true,
         layout: {
@@ -178,8 +274,28 @@ Return ONLY the JSON matching the schema.`;
     
     // In case of error (e.g. timeout, invalid key, rate limit), return fallback layout so user is never stuck
     try {
-      const inputs: PlotInputs = await req.json();
-      const fallbackLayout = generateLocalLayout(inputs);
+      const safeInputs: PlotInputs = inputs || {
+        lengthFt: 30,
+        breadthFt: 40,
+        orientation: "North",
+        roadFacing: "North",
+        bedrooms: 2,
+        bathrooms: 2,
+        parking: true,
+        garden: false,
+        poojaRoom: true,
+        vastu: true,
+        style: "modern",
+        engine: "procedural"
+      };
+      
+      const reqFloor = inputs ? (inputs as any).floor : 0;
+      const reqStaircase = inputs ? (inputs as any).staircase : undefined;
+
+      const fallbackLayout = reqFloor === 0
+        ? generateLocalLayout(safeInputs)
+        : generateLocalUpperFloorLayout(safeInputs, reqFloor, reqStaircase);
+        
       return NextResponse.json({
         success: true,
         layout: {
@@ -196,3 +312,4 @@ Return ONLY the JSON matching the schema.`;
     }
   }
 }
+

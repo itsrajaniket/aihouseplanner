@@ -7,9 +7,10 @@ import { ChevronDown, ChevronUp, Sparkles, Zap, Sliders, MapPin } from "lucide-r
 interface InputFormProps {
   onSubmit: (inputs: PlotInputs) => void;
   isLoading: boolean;
+  lockedEngine: "ai" | "procedural" | null;
 }
 
-export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
+export default function InputForm({ onSubmit, isLoading, lockedEngine }: InputFormProps) {
   const [lengthFt, setLengthFt] = useState<number>(30);
   const [breadthFt, setBreadthFt] = useState<number>(40);
   const [orientation, setOrientation] = useState<string>("North");
@@ -27,6 +28,19 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
   const [vastu, setVastu] = useState(true);
   const [style, setStyle] = useState<"modern" | "traditional" | "minimalist">("modern");
   const [engine, setEngine] = useState<"ai" | "procedural">("procedural");
+
+  // New customizations
+  const [floors, setFloors] = useState<number>(1);
+  const [familyType, setFamilyType] = useState<"nuclear" | "joint">("nuclear");
+  const [kitchenType, setKitchenType] = useState<"open" | "closed">("closed");
+  const [servantQuarters, setServantQuarters] = useState(false);
+
+  // Sync engine when session locked
+  React.useEffect(() => {
+    if (lockedEngine) {
+      setEngine(lockedEngine);
+    }
+  }, [lockedEngine]);
 
   // Standard Indian Plot presets
   const presets = [
@@ -55,7 +69,11 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
       poojaRoom,
       vastu,
       style,
-      engine,
+      engine: lockedEngine || engine,
+      floors,
+      familyType,
+      kitchenType,
+      servantQuarters,
     });
   };
 
@@ -174,8 +192,11 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
         <div className="grid grid-cols-2 gap-2 bg-[#fcfbf7] p-1 rounded-xl border border-[#e0dbcd]">
           <button
             type="button"
+            disabled={lockedEngine !== null}
             onClick={() => setEngine("procedural")}
             className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              lockedEngine !== null ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
+            } ${
               engine === "procedural"
                 ? "bg-white shadow-sm text-[#2c3539] border border-[#e0dbcd]"
                 : "text-[#8892b0] hover:text-[#2c3539]"
@@ -186,8 +207,11 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
           </button>
           <button
             type="button"
+            disabled={lockedEngine !== null}
             onClick={() => setEngine("ai")}
             className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              lockedEngine !== null ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
+            } ${
               engine === "ai"
                 ? "bg-white shadow-sm text-[#2c3539] border border-[#e0dbcd]"
                 : "text-[#8892b0] hover:text-[#2c3539]"
@@ -197,7 +221,12 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
             Gemini AI
           </button>
         </div>
-        {engine === "ai" && (
+        {lockedEngine && (
+          <p className="text-[10px] text-stone-500 leading-normal">
+            Design engine is locked to <strong>{lockedEngine === "ai" ? "Gemini AI" : "Instant Rules"}</strong> for this multi-floor project.
+          </p>
+        )}
+        {!lockedEngine && engine === "ai" && (
           <p className="text-[10px] text-amber-600 leading-normal">
             Note: Gemini AI requires a <strong>GEMINI_API_KEY</strong> environment variable. If missing, it will safely auto-fallback to procedural.
           </p>
@@ -220,11 +249,32 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
 
         {showAdvanced && (
           <div className="flex flex-col gap-4 mt-4 bg-[#fcfbf7] border border-[#eeeada] p-4 rounded-xl transition-all duration-300">
+            {/* Floors count */}
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-semibold text-[#2c3539]">Number of Floors</span>
+              <div className="flex gap-1">
+                {[1, 2, 3].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setFloors(n)}
+                    className={`w-7 h-7 rounded-lg text-xs font-bold border flex items-center justify-center transition-all ${
+                      floors === n
+                        ? "bg-[#2c3539] border-[#2c3539] text-white"
+                        : "border-[#e0dbcd] bg-white text-[#2c3539] hover:bg-[#fcfbf7]"
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Bedrooms count */}
             <div className="flex justify-between items-center">
               <span className="text-xs font-semibold text-[#2c3539]">Bedrooms</span>
               <div className="flex gap-1">
-                {[1, 2, 3, 4].map((n) => (
+                {[1, 2, 3, 4, 5].map((n) => (
                   <button
                     key={n}
                     type="button"
@@ -245,7 +295,7 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
             <div className="flex justify-between items-center">
               <span className="text-xs font-semibold text-[#2c3539]">Bathrooms</span>
               <div className="flex gap-1">
-                {[1, 2, 3].map((n) => (
+                {[1, 2, 3, 4].map((n) => (
                   <button
                     key={n}
                     type="button"
@@ -262,7 +312,49 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
               </div>
             </div>
 
-            {/* Toggles (Vastu, Parking, Garden, Pooja) */}
+            {/* Family Type */}
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-semibold text-[#2c3539]">Family Type</span>
+              <div className="flex gap-1 bg-white p-0.5 rounded-lg border border-[#e0dbcd]">
+                {(["nuclear", "joint"] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setFamilyType(type)}
+                    className={`px-2 py-1 rounded-md text-[10px] font-bold capitalize transition-all ${
+                      familyType === type
+                        ? "bg-[#2c3539] text-white"
+                        : "text-[#2c3539] hover:bg-[#fcfbf7]"
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Kitchen Type */}
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-semibold text-[#2c3539]">Kitchen Type</span>
+              <div className="flex gap-1 bg-white p-0.5 rounded-lg border border-[#e0dbcd]">
+                {(["open", "closed"] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setKitchenType(type)}
+                    className={`px-2 py-1 rounded-md text-[10px] font-bold capitalize transition-all ${
+                      kitchenType === type
+                        ? "bg-[#2c3539] text-white"
+                        : "text-[#2c3539] hover:bg-[#fcfbf7]"
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Toggles (Vastu, Parking, Garden, Pooja, Servant) */}
             <div className="grid grid-cols-2 gap-3 border-t border-[#eeeada] pt-3">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
@@ -302,6 +394,16 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
                   className="w-4 h-4 rounded accent-[#2c3539] cursor-pointer"
                 />
                 <span className="text-xs font-medium text-[#2c3539]">Pooja Room</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer select-none col-span-2">
+                <input
+                  type="checkbox"
+                  checked={servantQuarters}
+                  onChange={(e) => setServantQuarters(e.target.checked)}
+                  className="w-4 h-4 rounded accent-[#2c3539] cursor-pointer"
+                />
+                <span className="text-xs font-medium text-[#2c3539]">Servant Quarters</span>
               </label>
             </div>
 
