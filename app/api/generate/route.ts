@@ -141,8 +141,7 @@ Given a plot of size: ${lengthFt} ft (length, X-axis) by ${breadthFt} ft (breadt
 Orientation: ${orientation} (the top edge of the plot points in this direction).
 Front Road Side: ${roadFacing} (road runs along this edge).
 
-Configure the layout based on these constraints:
-- Usable space: Apply a 1.5 ft margin around the entire boundary for ventilation/access. All rooms must fit inside this.
+- Usable space: Apply a 1.5 ft margin around the entire boundary for ventilation/access. All rooms must fit inside this. Exception: If the plot width (X-axis length) is 22 ft or less, apply a 0.5 ft margin instead of 1.5 ft to allow realistic room sizes.
 - Bedrooms: ${bedrooms}
 - Bathrooms: ${bathrooms}
 - Parking: ${parking}
@@ -155,6 +154,14 @@ Configure the layout based on these constraints:
   * Master Bedroom in the South-West corner.
   * Main entrance in the North, East, or North-East.
   * Staircase in the South or West (avoiding the center / Brahmastan).
+
+- Narrow Plot Guidelines (width <= 22 ft):
+  * Do NOT split the width into 3 columns, as it makes rooms too narrow. Instead, arrange rooms in rows along the length (Y-axis), and split each row horizontally into 2 columns (left and right) if needed.
+  * Recommended layout pattern for a 2-bedroom vertical plot (like 20x40):
+    - Back row (top): Master Bedroom on the left (SW) and Kitchen on the right (SE).
+    - Middle row: Bathrooms/WCs aligned along the left wall, and a spacious Drawing/Living Room in the center/right.
+    - Lower row: Bedroom 2 on the left, and entrance/parking lobby on the right.
+    - Bottom row: Staircase on the bottom-left corner and Car Parking on the bottom-right corner.
 
 - Road Facing & Plot Entrance Alignment (CRITICAL):
   * The front road is on the ${roadFacing} side.
@@ -194,7 +201,7 @@ The staircase position is FIXED and cannot move because it must align with the g
 * You MUST place the staircase room at EXACTLY these coordinates: x = ${staircase?.x ?? 24}, y = ${staircase?.y ?? 15}, width = ${staircase?.width ?? 4}, height = ${staircase?.height ?? 9}. Its ID must be "staircase" and its label must be "Staircase".
 
 Configure the upper floor layout based on these constraints:
-- Usable space: Apply a 1.5 ft margin around the entire boundary. All rooms must fit inside this.
+- Usable space: Apply a 1.5 ft margin around the entire boundary. Exception: If the plot width is 22 ft or less, apply a 0.5 ft margin instead.
 - Bedrooms: Up to ${bedrooms} bedrooms on this floor (e.g. Master Bedroom, Bedroom 2, Guest Bedroom).
 - Bathrooms: Up to ${bathrooms} bathrooms on this floor.
 - No ground-floor parking or kitchen on this upper floor. Instead, allocate open space for an Open Terrace or Balcony, especially overlooking the road facing side.
@@ -204,6 +211,10 @@ Configure the upper floor layout based on these constraints:
   * Master Bedroom in the South-West corner.
   * Bathrooms in the West or North-West.
   * Balcony / Terrace on the North or East sides.
+
+- Narrow Plot Guidelines (width <= 22 ft):
+  * For upper floors on a narrow plot, maintain the same structural rows. Do not shift the staircase.
+  * Map the ground floor parking to an Open Terrace or Balcony, and ground floor kitchen/living spaces to Guest Bedrooms, Study, or Family Lounge.
 
 Output Rules:
 1. All coordinates (x, y) and dimensions (width, height) must be in FEET.

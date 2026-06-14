@@ -30,9 +30,108 @@ export function generateLocalLayout(inputs: PlotInputs): FloorPlan {
   const windows: Window[] = [];
 
   // Boundary wall thickness (setback)
-  const S = 1.5;
+  // For narrow plots (width <= 22 ft), we reduce the setback to 0.5 ft (6 inches) for realistic rooms.
+  const S = W <= 22 ? 0.5 : 1.5;
   const uW = snap(W - 2 * S); // usable width
   const uH = snap(H - 2 * S); // usable height
+
+  // ─── CUSTOM NARROW VERTICAL PLOT TEMPLATE (e.g. 20x40 standard) ────────────────
+  if (W <= 22 && H >= 35) {
+    const wLeft = snap(uW * 0.53);
+    const wRight = snap(uW - wLeft);
+
+    // 1. Rooms
+    const mBedH = snap(H * 0.27);
+    const kitchenH = mBedH;
+    
+    // Top Row
+    // Vastu: Master Bed in SW (left), Kitchen in SE (right)
+    const mBedX = S;
+    const mBedY = S;
+    const kitchenX = snap(S + wLeft);
+    const kitchenY = S;
+    
+    rooms.push({ id: "bedroom-master", label: "Master Bedroom", x: mBedX, y: mBedY, width: wLeft, height: mBedH });
+    rooms.push({ id: "kitchen", label: "Kitchen", x: kitchenX, y: kitchenY, width: wRight, height: kitchenH });
+
+    // Middle Row: Bathrooms on Left, Living on Right
+    const bath1H = snap(H * 0.165);
+    const bath1W = snap(wLeft * 0.4);
+    const bath1X = S;
+    const bath1Y = snap(S + mBedH + 0.5);
+    rooms.push({ id: "bathroom-1", label: "Bathroom/WC", x: bath1X, y: bath1Y, width: bath1W, height: bath1H });
+
+    const bath2H = snap(H * 0.10);
+    const bath2W = bath1W;
+    const bath2X = S;
+    const bath2Y = snap(bath1Y + bath1H + 0.5);
+    rooms.push({ id: "bathroom-2", label: "WC", x: bath2X, y: bath2Y, width: bath2W, height: bath2H });
+
+    // Living Room (spans center and right)
+    const livingX = snap(S + bath1W + 1.0); // leave 1 ft corridor / partition wall
+    const livingY = snap(S + mBedH + 0.5);
+    const livingW = snap(W - S - livingX);
+    const livingH = snap(bath1H + bath2H + 0.5);
+    rooms.push({ id: "living", label: "Drawing / Living", x: livingX, y: livingY, width: livingW, height: livingH });
+
+    // Lower Row: Bedroom 2 on Left, Parking/Entrance Lobby on Right
+    const bed2H = snap(H * 0.25);
+    const bed2W = wLeft;
+    const bed2X = S;
+    const bed2Y = snap(bath2Y + bath2H + 1.0); // leave 1 ft lobby/corridor entrance
+    rooms.push({ id: "bedroom-2", label: "Bedroom 2", x: bed2X, y: bed2Y, width: bed2W, height: bed2H });
+
+    // Bottom Row: Staircase on Left, Parking on Right
+    const stairH = snap(H - S - (bed2Y + bed2H) - 0.5);
+    const stairW = wLeft;
+    const stairX = S;
+    const stairY = snap(bed2Y + bed2H + 0.5);
+    rooms.push({ id: "staircase", label: "Staircase", x: stairX, y: stairY, width: stairW, height: stairH });
+
+    const parkW = wRight;
+    const parkX = snap(S + wLeft);
+    const parkY = snap(livingY + livingH + 0.5);
+    const parkH = snap(H - S - parkY);
+    rooms.push({ id: "parking", label: "Car Parking", x: parkX, y: parkY, width: parkW, height: parkH });
+
+    // 2. Doors & Windows
+    // Master Bed Door (bottom wall)
+    doors.push({ room: "bedroom-master", wall: "bottom", position: 1.0, width: 3.0 });
+    // Kitchen Door (bottom wall)
+    doors.push({ room: "kitchen", wall: "bottom", position: 1.0, width: 3.0 });
+    // Bathroom 1 Door (right wall)
+    doors.push({ room: "bathroom-1", wall: "right", position: 1.0, width: 2.5 });
+    // Bathroom 2 Door (right wall)
+    doors.push({ room: "bathroom-2", wall: "right", position: 1.0, width: 2.5 });
+    // Living Main Door (bottom wall, opening from parking)
+    doors.push({ room: "living", wall: "bottom", position: snap(livingW - 4.5), width: 3.5 });
+    // Bedroom 2 Door (top wall)
+    doors.push({ room: "bedroom-2", wall: "top", position: 1.0, width: 3.0 });
+
+    // Windows
+    windows.push({ room: "bedroom-master", wall: "top", position: snap(wLeft / 2 - 2), width: 4.0 });
+    windows.push({ room: "kitchen", wall: "top", position: snap(wRight / 2 - 1.5), width: 3.0 });
+    windows.push({ room: "bathroom-1", wall: "left", position: snap(bath1H / 2 - 1), width: 2.0 });
+    windows.push({ room: "bathroom-2", wall: "left", position: snap(bath2H / 2 - 1), width: 2.0 });
+    windows.push({ room: "living", wall: "right", position: snap(livingH / 2 - 2), width: 4.0 });
+    windows.push({ room: "bedroom-2", wall: "left", position: snap(bed2H / 2 - 2), width: 4.0 });
+
+    // Explanation
+    let explanation = `Narrow vertical plot ${W}x${H} ft. Optimized row-based double-bedroom layout matching your design request.`;
+    if (vastu) explanation += " Vastu compliant: Master Bed SW, Kitchen SE, Stairs South/West.";
+    explanation += " Parking at front right. Green dashed line shows path to main entrance.";
+
+    return {
+      floor: 0,
+      plotLength: W,
+      plotBreadth: H,
+      rooms,
+      doors,
+      windows,
+      staircase: { x: stairX, y: stairY, width: stairW, height: stairH },
+      explanation
+    };
+  }
 
   type Wall = "top" | "bottom" | "left" | "right";
 

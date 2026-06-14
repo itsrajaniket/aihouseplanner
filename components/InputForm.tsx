@@ -45,6 +45,7 @@ export default function InputForm({ onSubmit, isLoading, lockedEngine }: InputFo
   // Standard Indian Plot presets
   const presets = [
     { label: "20 x 30 (Small)", w: 20, h: 30 },
+    { label: "20 x 40 (Narrow)", w: 20, h: 40 },
     { label: "30 x 40 (Standard)", w: 30, h: 40 },
     { label: "30 x 50 (Spacious)", w: 30, h: 50 },
     { label: "40 x 60 (Large)", w: 40, h: 60 },
