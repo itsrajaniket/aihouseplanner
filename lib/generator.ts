@@ -73,348 +73,485 @@ export function generateLocalLayout(inputs: PlotInputs): FloorPlan {
   const uH = snap(H - 2 * S); // usable height
   const usableArea = uW * uH;
 
-  // ─── DYNAMIC ROOM COUNT REDUCTION FOR SMALL PLOTS (Section 10) ───
-  let activeBedrooms = bedroomsCount;
-  let activeBathrooms = bathroomsCount;
-  let activePooja = poojaRoom;
-  let activeServantQuarters = servantQuarters;
-  let activeParking = parking;
-  let activeGarden = garden;
+  // ─── SECOND-LEVEL EMERGENCY FALLBACK DEFINITION ───
+  const runEmergencyFallback = (err: any): FloorPlan => {
+    console.warn("Emergency fallback triggered in generateLocalLayout:", err);
+    try {
+      const rooms: Room[] = [];
+      const doors: Door[] = [];
 
-  const removedRooms: string[] = [];
+      const x0 = S;
+      const y0 = S;
 
-  // Minimum dimensions helper
-  const getMinArea = (
-    bedrooms: number,
-    bathrooms: number,
-    hasParking: boolean,
-    hasPooja: boolean,
-    hasServant: boolean,
-    hasGarden: boolean
-  ) => {
-    let area = 0;
-    // master bedroom: 11 * 12
-    area += 11 * 12;
-    // living: 10 * 12
-    area += 10 * 12;
-    // kitchen: 7 * 9
-    area += 7 * 9;
-    // staircase: 3.5 * 8
-    area += 3.5 * 8;
-    // first bathroom (core)
-    area += 4 * 6;
+      // Safe grid dimensions
+      const w_left = snap(uW * 0.40);
+      const w_right = snap(uW - w_left);
+      const h_top = snap(uH * 0.50);
+      const h_bottom = snap(uH - h_top);
+      const h_kitchen = snap(h_bottom * 0.60);
+      const h_bathroom = snap(h_bottom - h_kitchen);
 
-    // Additional bedrooms (each 9 * 10)
-    if (bedrooms > 1) {
-      area += (bedrooms - 1) * (9 * 10);
+      // 1. Living Room (Top-Left)
+      rooms.push({
+        id: "living",
+        label: "Living Room",
+        x: x0,
+        y: y0,
+        width: Math.max(4.0, w_left),
+        height: Math.max(4.0, h_top),
+      });
+
+      // 2. Master Bedroom (Top-Right)
+      rooms.push({
+        id: "bedroom-master",
+        label: "Master Bedroom",
+        x: x0 + w_left,
+        y: y0,
+        width: Math.max(4.0, w_right),
+        height: Math.max(4.0, h_top),
+      });
+
+      // 3. Kitchen (Bottom-Left)
+      rooms.push({
+        id: "kitchen",
+        label: "Kitchen",
+        x: x0,
+        y: y0 + h_top,
+        width: Math.max(4.0, w_left),
+        height: Math.max(4.0, h_kitchen),
+      });
+
+      // 4. Bathroom (Bottom-Left, below Kitchen)
+      rooms.push({
+        id: "bathroom-1",
+        label: "Bathroom",
+        x: x0,
+        y: y0 + h_top + h_kitchen,
+        width: Math.max(4.0, w_left),
+        height: Math.max(4.0, h_bathroom),
+      });
+
+      // 5. Bedroom 2 (Bottom-Right, if space allows)
+      const hasBed2 = (W * H >= 500) && (w_right >= 4.0) && (h_bottom >= 4.0);
+      if (hasBed2) {
+        rooms.push({
+          id: "bedroom-2",
+          label: "Bedroom 2",
+          x: x0 + w_left,
+          y: y0 + h_top,
+          width: w_right,
+          height: h_bottom,
+        });
+      }
+
+      // Safe Door Helper
+      const getDoor = (roomId: string, wall: "top" | "bottom" | "left" | "right", roomDim: number, width: number = 3.0) => {
+        const dWidth = Math.min(width, Math.max(1.5, roomDim - 1.0));
+        const position = Math.max(0.5, snap((roomDim - dWidth) / 2));
+        return { room: roomId, wall, position, width: dWidth };
+      };
+
+      // Living room door (top wall - entrance)
+      doors.push(getDoor("living", "top", w_left, 3.0));
+
+      // Master Bedroom door (left wall shared with living)
+      doors.push(getDoor("bedroom-master", "left", h_top, 3.0));
+
+      // Kitchen door (top wall shared with living)
+      doors.push(getDoor("kitchen", "top", w_left, 3.0));
+
+      // Bathroom door (right wall shared with bedroom 2 or external/passage)
+      doors.push(getDoor("bathroom-1", "right", h_bathroom, 2.5));
+
+      // Bedroom 2 door (top wall shared with Master Bedroom)
+      if (hasBed2) {
+        doors.push(getDoor("bedroom-2", "top", w_right, 3.0));
+      }
+
+      return {
+        floor: 0,
+        plotLength: W,
+        plotBreadth: H,
+        rooms,
+        doors,
+        windows: [],
+        staircase: { x: 0, y: 0, width: 0, height: 0 },
+        explanation: "Basic layout generated. Plot size is very small or unusual — showing simplified arrangement.",
+      };
+    } catch (innerErr) {
+      console.error("Critical fallback failed, returning absolute placeholder:", innerErr);
+      return {
+        floor: 0,
+        plotLength: W,
+        plotBreadth: H,
+        rooms: [
+          {
+            id: "placeholder",
+            label: "Plot too small",
+            x: 0,
+            y: 0,
+            width: W,
+            height: H,
+          },
+        ],
+        doors: [
+          {
+            room: "placeholder",
+            wall: "top",
+            position: Math.max(0.5, snap(W / 2 - 1.5)),
+            width: Math.min(3.0, W - 1.0),
+          },
+        ],
+        windows: [],
+        staircase: { x: 0, y: 0, width: 0, height: 0 },
+        explanation: "Plot size is too small to generate a valid layout.",
+      };
     }
-    // Additional bathrooms (each 4 * 6)
-    if (bathrooms > 1) {
-      area += (bathrooms - 1) * (4 * 6);
-    }
-    if (hasParking) {
-      area += 10 * 18;
-    }
-    if (hasPooja) {
-      area += 4 * 5;
-    }
-    if (hasServant) {
-      area += 8 * 8; // Servant quarters min area
-    }
-    if (hasGarden) {
-      area += 8 * 10; // Garden min area
-    }
-    return area;
   };
 
-  // Drop rooms until total minimum area fits within 90% of usable area AND geometry is valid
-  while (
-    getMinArea(activeBedrooms, activeBathrooms, activeParking, activePooja, activeServantQuarters, activeGarden) > usableArea * 0.90 ||
-    !checkGeometry(activeBedrooms, activeParking, activeGarden, W, H)
-  ) {
-    if (activePooja) {
-      activePooja = false;
-      removedRooms.push("Pooja Room");
-    } else if (activeServantQuarters) {
-      activeServantQuarters = false;
-      removedRooms.push("Servant Quarters");
-    } else if (activeBathrooms > 1) {
-      removedRooms.push("Extra Bathroom");
-      activeBathrooms -= 1;
-    } else if (activeBedrooms >= 3) {
-      removedRooms.push(`Bedroom ${activeBedrooms}`);
-      activeBedrooms -= 1;
-    } else if (activeParking) {
-      activeParking = false;
-      removedRooms.push("Car Parking");
-    } else if (activeBedrooms >= 2) {
-      removedRooms.push("Bedroom 2");
-      activeBedrooms -= 1;
-    } else if (activeGarden) {
-      activeGarden = false;
-      removedRooms.push("Garden");
-    } else {
-      break; // Core rooms cannot be removed
-    }
-  }
+  try {
+    // ─── DYNAMIC ROOM COUNT REDUCTION FOR SMALL PLOTS (Section 10) ───
+    let activeBedrooms = bedroomsCount;
+    let activeBathrooms = bathroomsCount;
+    let activePooja = poojaRoom;
+    let activeServantQuarters = servantQuarters;
+    let activeParking = parking;
+    let activeGarden = garden;
 
-  let rootNode: LayoutNode;
+    const removedRooms: string[] = [];
 
-  // ─── BUILD SLICING TREE DYNAMICALLY ───
-  if (W <= 22 && H >= 35) {
-    // ─── NARROW PLOT LAYOUT (e.g. 20x40 vertical layout) ───
-    const minBackH = 18.1;
-    const minLeftFrontH = activeBedrooms >= 2 ? 21.1 : 11.7;
-    const minRightFrontH = activeParking ? 18.2 : activeGarden ? 16.2 : 8.2;
-    const minFrontH = Math.max(minLeftFrontH, minRightFrontH);
+    // Minimum dimensions helper
+    const getMinArea = (
+      bedrooms: number,
+      bathrooms: number,
+      hasParking: boolean,
+      hasPooja: boolean,
+      hasServant: boolean,
+      hasGarden: boolean
+    ) => {
+      let area = 0;
+      // master bedroom: 11 * 12
+      area += 11 * 12;
+      // living: 10 * 12
+      area += 10 * 12;
+      // kitchen: 7 * 9
+      area += 7 * 9;
+      // staircase: 3.5 * 8
+      area += 3.5 * 8;
+      // first bathroom (core)
+      area += 4 * 6;
 
-    const minHeightExcludingCorridor = minBackH + minFrontH;
-    const remainingHeight = (uH - 3.5) - minHeightExcludingCorridor;
-
-    let backH = minBackH;
-    let frontH = minFrontH;
-
-    if (remainingHeight > 0) {
-      const backProp = minBackH / minHeightExcludingCorridor;
-      backH = snap(minBackH + remainingHeight * backProp);
-      frontH = snap(uH - 3.5 - backH);
-    }
-
-    // 1. Back Zone: Master Bed + Bathrooms (left) and Kitchen/Bed 3 (right)
-    let bathroomsNode: LayoutNode;
-    if (activeBathrooms >= 2) {
-      bathroomsNode = {
-        type: "split",
-        direction: "horizontal",
-        ratio: 0.5,
-        children: [
-          { type: "room", id: "bathroom-1", label: "Bathroom 1" },
-          { type: "room", id: "bathroom-2", label: "Bathroom 2" },
-        ],
-      };
-    } else {
-      bathroomsNode = { type: "room", id: "bathroom-1", label: "Bathroom" };
-    }
-
-    const leftColumnBack: LayoutNode = {
-      type: "split",
-      direction: "vertical",
-      ratio: Math.max(0.1, Math.min(0.9, (backH - 6.4) / backH)),
-      children: [
-        { type: "room", id: "bedroom-master", label: "Master Bedroom" },
-        bathroomsNode,
-      ],
+      // Additional bedrooms (each 9 * 10)
+      if (bedrooms > 1) {
+        area += (bedrooms - 1) * (9 * 10);
+      }
+      // Additional bathrooms (each 4 * 6)
+      if (bathrooms > 1) {
+        area += (bathrooms - 1) * (4 * 6);
+      }
+      if (hasParking) {
+        area += 10 * 18;
+      }
+      if (hasPooja) {
+        area += 4 * 5;
+      }
+      if (hasServant) {
+        area += 8 * 8; // Servant quarters min area
+      }
+      if (hasGarden) {
+        area += 8 * 10; // Garden min area
+      }
+      return area;
     };
 
-    let rightColumnBack: LayoutNode;
-    if (activeBedrooms >= 3) {
-      rightColumnBack = {
-        type: "split",
-        direction: "vertical",
-        ratio: Math.max(0.1, Math.min(0.9, 9.4 / backH)),
-        children: [
-          { type: "room", id: "bedroom-3", label: "Bedroom 3" },
-          { type: "room", id: "kitchen", label: "Kitchen" },
-        ],
-      };
-    } else {
-      rightColumnBack = { type: "room", id: "kitchen", label: "Kitchen" };
+    // Drop rooms until total minimum area fits within 90% of usable area AND geometry is valid
+    while (
+      getMinArea(activeBedrooms, activeBathrooms, activeParking, activePooja, activeServantQuarters, activeGarden) > usableArea * 0.90 ||
+      !checkGeometry(activeBedrooms, activeParking, activeGarden, W, H)
+    ) {
+      if (activePooja) {
+        activePooja = false;
+        removedRooms.push("Pooja Room");
+      } else if (activeServantQuarters) {
+        activeServantQuarters = false;
+        removedRooms.push("Servant Quarters");
+      } else if (activeBathrooms > 1) {
+        removedRooms.push("Extra Bathroom");
+        activeBathrooms -= 1;
+      } else if (activeBedrooms >= 3) {
+        removedRooms.push(`Bedroom ${activeBedrooms}`);
+        activeBedrooms -= 1;
+      } else if (activeParking) {
+        activeParking = false;
+        removedRooms.push("Car Parking");
+      } else if (activeBedrooms >= 2) {
+        removedRooms.push("Bedroom 2");
+        activeBedrooms -= 1;
+      } else if (activeGarden) {
+        activeGarden = false;
+        removedRooms.push("Garden");
+      } else {
+        break; // Core rooms cannot be removed
+      }
     }
 
-    const backZone: LayoutNode = {
-      type: "split",
-      direction: "horizontal",
-      ratio: Math.max(0.1, Math.min(0.9, 11.5 / uW)),
-      children: [leftColumnBack, rightColumnBack],
-    };
+    let rootNode: LayoutNode;
 
-    // 2. Corridor Zone: 3.5ft horizontal strip full width
-    const corridorRoom: LayoutNode = {
-      type: "room",
-      id: "corridor",
-      label: "Passage",
-    };
+    // ─── BUILD SLICING TREE DYNAMICALLY ───
+    if (W <= 22 && H >= 35) {
+      // ─── NARROW PLOT LAYOUT (e.g. 20x40 vertical layout) ───
+      const minBackH = 18.1;
+      const minLeftFrontH = activeBedrooms >= 2 ? 21.1 : 11.7;
+      const minRightFrontH = activeParking ? 18.2 : activeGarden ? 16.2 : 8.2;
+      const minFrontH = Math.max(minLeftFrontH, minRightFrontH);
 
-    // 3. Front Zone: Living Room + Bedroom 2 (left) and Staircase + Parking/Garden (right)
-    let leftColumnFront: LayoutNode;
-    if (activeBedrooms >= 2) {
-      leftColumnFront = {
-        type: "split",
-        direction: "vertical",
-        ratio: Math.max(0.1, Math.min(0.9, 9.4 / frontH)),
-        children: [
-          { type: "room", id: "bedroom-2", label: "Bedroom 2" },
-          { type: "room", id: "living", label: "Drawing / Living" },
-        ],
-      };
-    } else {
-      leftColumnFront = { type: "room", id: "living", label: "Drawing / Living" };
-    }
+      const minHeightExcludingCorridor = minBackH + minFrontH;
+      const remainingHeight = (uH - 3.5) - minHeightExcludingCorridor;
 
-    let rightColumnFront: LayoutNode;
-    if (activeParking) {
-      rightColumnFront = {
-        type: "split",
-        direction: "vertical",
-        ratio: Math.max(0.1, Math.min(0.9, 8.2 / frontH)),
-        children: [
-          { type: "room", id: "staircase", label: "Staircase" },
-          { type: "room", id: "parking", label: "Car Parking" },
-        ],
-      };
-    } else if (activeGarden) {
-      rightColumnFront = {
-        type: "split",
-        direction: "vertical",
-        ratio: Math.max(0.1, Math.min(0.9, 8.2 / frontH)),
-        children: [
-          { type: "room", id: "staircase", label: "Staircase" },
-          { type: "room", id: "garden", label: "Garden / Lawn" },
-        ],
-      };
-    } else {
-      rightColumnFront = { type: "room", id: "staircase", label: "Staircase" };
-    }
+      let backH = minBackH;
+      let frontH = minFrontH;
 
-    const rightColWidth = activeParking ? 10.0 : 4.5;
-    const frontZone: LayoutNode = {
-      type: "split",
-      direction: "horizontal",
-      ratio: Math.max(0.1, Math.min(0.9, (uW - rightColWidth) / uW)),
-      children: [leftColumnFront, rightColumnFront],
-    };
+      if (remainingHeight > 0) {
+        const backProp = minBackH / minHeightExcludingCorridor;
+        backH = snap(minBackH + remainingHeight * backProp);
+        frontH = snap(uH - 3.5 - backH);
+      }
 
-    // 4. Root Slicing Node
-    rootNode = {
-      type: "split",
-      direction: "vertical",
-      ratio: backH / uH,
-      children: [
-        backZone,
-        {
-          type: "split",
-          direction: "vertical",
-          ratio: 3.5 / (uH - backH),
-          children: [corridorRoom, frontZone],
-        },
-      ],
-    };
-  } else {
-    // ─── STANDARD PLOT LAYOUT ───
-    if (activeBedrooms === 1) {
-      // 2-Row Layout: Back Row and Front Row
-      let backRowLeft: LayoutNode;
+      // 1. Back Zone: Master Bed + Bathrooms (left) and Kitchen/Bed 3 (right)
+      let bathroomsNode: LayoutNode;
       if (activeBathrooms >= 2) {
-        backRowLeft = {
+        bathroomsNode = {
           type: "split",
           direction: "horizontal",
-          ratio: 0.75,
+          ratio: 0.5,
           children: [
-            { type: "room", id: "bedroom-master", label: "Master Bedroom" },
             { type: "room", id: "bathroom-1", label: "Bathroom 1" },
+            { type: "room", id: "bathroom-2", label: "Bathroom 2" },
           ],
         };
       } else {
-        backRowLeft = { type: "room", id: "bedroom-master", label: "Master Bedroom" };
+        bathroomsNode = { type: "room", id: "bathroom-1", label: "Bathroom" };
       }
 
-      const backRow: LayoutNode = {
+      const leftColumnBack: LayoutNode = {
         type: "split",
-        direction: "horizontal",
-        ratio: 0.65,
-        children: [backRowLeft, { type: "room", id: "kitchen", label: "Kitchen" }],
+        direction: "vertical",
+        ratio: Math.max(0.1, Math.min(0.9, (backH - 6.4) / backH)),
+        children: [
+          { type: "room", id: "bedroom-master", label: "Master Bedroom" },
+          bathroomsNode,
+        ],
       };
 
-      const backH = 12.2;
-      const frontH = uH - backH;
-
-      let frontRowRight: LayoutNode;
-      if (activeParking) {
-        frontRowRight = {
+      let rightColumnBack: LayoutNode;
+      if (activeBedrooms >= 3) {
+        rightColumnBack = {
           type: "split",
           direction: "vertical",
-          ratio: 8.2 / frontH, // Staircase height = 8.0 ft
+          ratio: Math.max(0.1, Math.min(0.9, 9.4 / backH)),
+          children: [
+            { type: "room", id: "bedroom-3", label: "Bedroom 3" },
+            { type: "room", id: "kitchen", label: "Kitchen" },
+          ],
+        };
+      } else {
+        rightColumnBack = { type: "room", id: "kitchen", label: "Kitchen" };
+      }
+
+      const backZone: LayoutNode = {
+        type: "split",
+        direction: "horizontal",
+        ratio: Math.max(0.1, Math.min(0.9, 11.5 / uW)),
+        children: [leftColumnBack, rightColumnBack],
+      };
+
+      // 2. Corridor Zone: 3.5ft horizontal strip full width
+      const corridorRoom: LayoutNode = {
+        type: "room",
+        id: "corridor",
+        label: "Passage",
+      };
+
+      // 3. Front Zone: Living Room + Bedroom 2 (left) and Staircase + Parking/Garden (right)
+      let leftColumnFront: LayoutNode;
+      if (activeBedrooms >= 2) {
+        leftColumnFront = {
+          type: "split",
+          direction: "vertical",
+          ratio: Math.max(0.1, Math.min(0.9, 9.4 / frontH)),
+          children: [
+            { type: "room", id: "bedroom-2", label: "Bedroom 2" },
+            { type: "room", id: "living", label: "Drawing / Living" },
+          ],
+        };
+      } else {
+        leftColumnFront = { type: "room", id: "living", label: "Drawing / Living" };
+      }
+
+      let rightColumnFront: LayoutNode;
+      if (activeParking) {
+        rightColumnFront = {
+          type: "split",
+          direction: "vertical",
+          ratio: Math.max(0.1, Math.min(0.9, 8.2 / frontH)),
           children: [
             { type: "room", id: "staircase", label: "Staircase" },
             { type: "room", id: "parking", label: "Car Parking" },
           ],
         };
       } else if (activeGarden) {
-        frontRowRight = {
+        rightColumnFront = {
           type: "split",
           direction: "vertical",
-          ratio: 8.2 / frontH,
+          ratio: 8.2 / 18.2,
           children: [
             { type: "room", id: "staircase", label: "Staircase" },
             { type: "room", id: "garden", label: "Garden / Lawn" },
           ],
         };
       } else {
-        frontRowRight = { type: "room", id: "staircase", label: "Staircase" };
+        rightColumnFront = { type: "room", id: "staircase", label: "Staircase" };
       }
 
-      const frontRow: LayoutNode = {
+      const rightColWidth = activeParking ? 10.0 : 4.5;
+      const frontZone: LayoutNode = {
         type: "split",
         direction: "horizontal",
-        ratio: (uW - 10) / uW, // Staircase column width = 10 ft
-        children: [{ type: "room", id: "living", label: "Living Room" }, frontRowRight],
+        ratio: Math.max(0.1, Math.min(0.9, (uW - rightColWidth) / uW)),
+        children: [leftColumnFront, rightColumnFront],
       };
 
+      // 4. Root Slicing Node
       rootNode = {
         type: "split",
         direction: "vertical",
         ratio: backH / uH,
-        children: [backRow, frontRow],
+        children: [
+          backZone,
+          {
+            type: "split",
+            direction: "vertical",
+            ratio: 3.5 / (uH - backH),
+            children: [corridorRoom, frontZone],
+          },
+        ],
       };
     } else {
-      // 3-Row Layout: Back Row, Middle Row, Front Row
-      let backRowLeft: LayoutNode;
-      if (activeBathrooms >= 2) {
-        backRowLeft = {
+      // ─── STANDARD PLOT LAYOUT ───
+      if (activeBedrooms === 1) {
+        // 2-Row Layout: Back Row and Front Row
+        let backRowLeft: LayoutNode;
+        if (activeBathrooms >= 2) {
+          backRowLeft = {
+            type: "split",
+            direction: "horizontal",
+            ratio: 0.75,
+            children: [
+              { type: "room", id: "bedroom-master", label: "Master Bedroom" },
+              { type: "room", id: "bathroom-1", label: "Bathroom 1" },
+            ],
+          };
+        } else {
+          backRowLeft = { type: "room", id: "bedroom-master", label: "Master Bedroom" };
+        }
+
+        const backRow: LayoutNode = {
           type: "split",
           direction: "horizontal",
-          ratio: 0.75,
-          children: [
-            { type: "room", id: "bedroom-master", label: "Master Bedroom" },
-            { type: "room", id: "bathroom-1", label: "Bathroom 1" },
-          ],
+          ratio: 0.65,
+          children: [backRowLeft, { type: "room", id: "kitchen", label: "Kitchen" }],
+        };
+
+        const backH = 12.2;
+        const frontH = uH - backH;
+
+        let frontRowRight: LayoutNode;
+        if (activeParking) {
+          frontRowRight = {
+            type: "split",
+            direction: "vertical",
+            ratio: 8.2 / frontH, // Staircase height = 8.0 ft
+            children: [
+              { type: "room", id: "staircase", label: "Staircase" },
+              { type: "room", id: "parking", label: "Car Parking" },
+            ],
+          };
+        } else if (activeGarden) {
+          frontRowRight = {
+            type: "split",
+            direction: "vertical",
+            ratio: 8.2 / frontH,
+            children: [
+              { type: "room", id: "staircase", label: "Staircase" },
+              { type: "room", id: "garden", label: "Garden / Lawn" },
+            ],
+          };
+        } else {
+          frontRowRight = { type: "room", id: "staircase", label: "Staircase" };
+        }
+
+        const frontRow: LayoutNode = {
+          type: "split",
+          direction: "horizontal",
+          ratio: (uW - 10) / uW, // Staircase column width = 10 ft
+          children: [{ type: "room", id: "living", label: "Living Room" }, frontRowRight],
+        };
+
+        rootNode = {
+          type: "split",
+          direction: "vertical",
+          ratio: backH / uH,
+          children: [backRow, frontRow],
         };
       } else {
-        backRowLeft = { type: "room", id: "bedroom-master", label: "Master Bedroom" };
-      }
+        // 3-Row Layout: Back Row, Middle Row, Front Row
+        let backRowLeft: LayoutNode;
+        if (activeBathrooms >= 2) {
+          backRowLeft = {
+            type: "split",
+            direction: "horizontal",
+            ratio: 0.75,
+            children: [
+              { type: "room", id: "bedroom-master", label: "Master Bedroom" },
+              { type: "room", id: "bathroom-1", label: "Bathroom 1" },
+            ],
+          };
+        } else {
+          backRowLeft = { type: "room", id: "bedroom-master", label: "Master Bedroom" };
+        }
 
-      const backRow: LayoutNode = {
-        type: "split",
-        direction: "horizontal",
-        ratio: 0.65,
-        children: [backRowLeft, { type: "room", id: "kitchen", label: "Kitchen" }],
-      };
-
-      let middleRowLeft: LayoutNode;
-      if (activeBedrooms >= 3) {
-        middleRowLeft = {
+        const backRow: LayoutNode = {
           type: "split",
           direction: "horizontal",
-          ratio: 0.5,
-          children: [
-            { type: "room", id: "bedroom-2", label: "Bedroom 2" },
-            { type: "room", id: "bedroom-3", label: "Bedroom 3" },
-          ],
+          ratio: 0.65,
+          children: [backRowLeft, { type: "room", id: "kitchen", label: "Kitchen" }],
         };
-      } else {
-        middleRowLeft = { type: "room", id: "bedroom-2", label: "Bedroom 2" };
-      }
 
-      let middleRowRight: LayoutNode;
-      const commonBathId = activeBathrooms >= 2 ? "bathroom-2" : "bathroom-1";
-      if (activePooja) {
-        middleRowRight = {
-          type: "split",
-          direction: "horizontal",
-          ratio: 0.5,
-          children: [
-            { type: "room", id: commonBathId, label: "Bathroom" },
-            { type: "room", id: "pooja", label: "Pooja Room" },
+        let middleRowLeft: LayoutNode;
+        if (activeBedrooms >= 3) {
+          middleRowLeft = {
+            type: "split",
+            direction: "horizontal",
+            ratio: 0.5,
+            children: [
+              { type: "room", id: "bedroom-2", label: "Bedroom 2" },
+              { type: "room", id: "bedroom-3", label: "Bedroom 3" },
+            ],
+          };
+        } else {
+          middleRowLeft = { type: "room", id: "bedroom-2", label: "Bedroom 2" };
+        }
+
+        let middleRowRight: LayoutNode;
+        const commonBathId = activeBathrooms >= 2 ? "bathroom-2" : "bathroom-1";
+        if (activePooja) {
+          middleRowRight = {
+            type: "split",
+            direction: "horizontal",
+            ratio: 0.5,
+            children: [
+              { type: "room", id: commonBathId, label: "Bathroom" },
+              { type: "room", id: "pooja", label: "Pooja Room" },
           ],
         };
       } else {
@@ -482,6 +619,19 @@ export function generateLocalLayout(inputs: PlotInputs): FloorPlan {
   // ─── SOLVE COORDINATES ───
   const rooms = solveLayout(rootNode, S, S, uW, uH, 0.4);
 
+  // Sanity Check: Ensure no main room width or height is less than 4 ft
+  const hasTinyRoom = rooms.some(
+    (r) =>
+      (r.id.startsWith("bedroom") ||
+        r.id === "kitchen" ||
+        r.id === "living" ||
+        r.id === "family") &&
+      (r.width < 4 || r.height < 4)
+  );
+  if (hasTinyRoom) {
+    throw new Error("Layout contains rooms smaller than 4x4 ft");
+  }
+
   // ─── GEOMETRIC DOORS & WINDOWS ───
   const openings = generateDoorsAndWindows(rooms, W, H, roadFacing, vastu);
   const doors = openings.doors;
@@ -509,6 +659,9 @@ export function generateLocalLayout(inputs: PlotInputs): FloorPlan {
     staircase: staircaseCoords,
     explanation,
   };
+  } catch (error: any) {
+    return runEmergencyFallback(error);
+  }
 }
 
 export function generateLocalUpperFloorLayout(
@@ -518,6 +671,11 @@ export function generateLocalUpperFloorLayout(
 ): FloorPlan {
   const plan = generateLocalLayout({ ...inputs, floors: inputs.floors });
   plan.floor = floorNumber;
+
+  if (plan.explanation.includes("Basic layout generated") || plan.explanation.includes("Plot size is too small")) {
+    plan.explanation = `Floor ${floorNumber} layout. ` + plan.explanation;
+    return plan;
+  }
 
   plan.rooms = plan.rooms.map((room) => {
     if (room.id === "staircase") {
