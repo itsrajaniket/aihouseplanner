@@ -1104,6 +1104,18 @@ export default function FloorPlanCanvas({
         </svg>
       </div>
 
+      {/* ── Warnings Notice Banner ── */}
+      {layout.warnings && layout.warnings.length > 0 && (
+        <div className="bg-amber-50 border-y border-amber-200 px-5 py-2 shrink-0 text-xs text-amber-800 font-medium">
+          {layout.warnings.map((warn, i) => (
+            <div key={i} className="flex items-start gap-1.5 leading-relaxed">
+              <span className="shrink-0 text-amber-500 font-bold">⚠️ Warning:</span>
+              <span>{warn}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ── Legend Bar ───────────────────────────────────────────────────── */}
       <div className="bg-[#FAFAF6] border-t border-[#E0DBCD] px-5 py-2.5 shrink-0">
         <div className="flex flex-wrap gap-x-5 gap-y-1.5 items-center">

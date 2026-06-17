@@ -56,7 +56,7 @@ export function validateFloorPlan(plan: FloorPlan): boolean {
 
   // 3. Minimum Room Sizes Check (Section 10)
   const isNarrow = Math.min(plotLength, plotBreadth) <= 22;
-  const tol = isNarrow ? 0.55 : 0.15;
+  const tol = 0.3; // Flat 0.3ft tolerance for ALL plots
 
   for (const r of rooms) {
     const minDim = Math.min(r.width, r.height);
@@ -104,7 +104,7 @@ export function validateFloorPlan(plan: FloorPlan): boolean {
 
   // 4. Aspect Ratio Check (Section 10: length-to-width ratio <= 3:1)
   for (const r of rooms) {
-    if (r.id === "garden" || r.id === "parking" || r.id === "staircase") continue;
+    if (r.id === "garden" || r.id === "parking" || r.id === "staircase" || r.id === "corridor") continue;
     const ratio = Math.max(r.width / r.height, r.height / r.width);
     if (ratio > 3.05) {
       console.warn(`Validation failed: Room "${r.label}" aspect ratio ${ratio.toFixed(2)}:1 is worse than 3:1.`);
@@ -114,11 +114,103 @@ export function validateFloorPlan(plan: FloorPlan): boolean {
 
   // 5. Door Existence Check (Section 2)
   for (const r of rooms) {
-    if (r.id === "staircase" || r.id === "garden" || r.id === "parking") continue;
+    if (r.id === "staircase" || r.id === "garden" || r.id === "parking" || r.id === "corridor") continue;
     const hasDoor = plan.doors && plan.doors.some((d) => d.room === r.id);
     if (!hasDoor) {
       console.warn(`Validation failed: Room "${r.label}" (${r.id}) has no door.`);
       return false;
+    }
+  }
+
+  // 6. Bathroom Isolation Check
+  for (const d of plan.doors || []) {
+    const isBathDoor =
+      d.room.toLowerCase().includes("bathroom") ||
+      d.room.toLowerCase().includes("toilet") ||
+      d.room.toLowerCase().includes("wc");
+    if (!isBathDoor) continue;
+
+    const room1 = rooms.find((r) => r.id === d.room);
+    if (!room1) continue;
+
+    let dxStart = 0, dxEnd = 0, dyStart = 0, dyEnd = 0;
+    let isHorizontal = false;
+    let doorY = 0, doorX = 0;
+
+    if (d.wall === "top") {
+      doorY = room1.y;
+      dxStart = room1.x + d.position;
+      dxEnd = dxStart + d.width;
+      isHorizontal = true;
+    } else if (d.wall === "bottom") {
+      doorY = room1.y + room1.height;
+      dxStart = room1.x + d.position;
+      dxEnd = dxStart + d.width;
+      isHorizontal = true;
+    } else if (d.wall === "left") {
+      doorX = room1.x;
+      dyStart = room1.y + d.position;
+      dyEnd = dyStart + d.width;
+      isHorizontal = false;
+    } else if (d.wall === "right") {
+      doorX = room1.x + room1.width;
+      dyStart = room1.y + d.position;
+      dyEnd = dyStart + d.width;
+      isHorizontal = false;
+    }
+
+    for (const room2 of rooms) {
+      const isKitchenOrDining =
+        room2.id.toLowerCase().includes("kitchen") ||
+        room2.id.toLowerCase().includes("dining");
+      if (!isKitchenOrDining) continue;
+
+      if (isHorizontal) {
+        const touchesTop = Math.abs(doorY - room2.y) < 0.25;
+        const touchesBottom = Math.abs(doorY - (room2.y + room2.height)) < 0.25;
+        if (touchesTop || touchesBottom) {
+          const overlapStart = Math.max(dxStart, room2.x);
+          const overlapEnd = Math.min(dxEnd, room2.x + room2.width);
+          if (overlapEnd - overlapStart > 0.5) {
+            console.warn(
+              `Validation failed: Bathroom door for "${d.room}" shares a wall with kitchen/dining room "${room2.id}".`
+            );
+            return false;
+          }
+        }
+      } else {
+        const touchesLeft = Math.abs(doorX - room2.x) < 0.25;
+        const touchesRight = Math.abs(doorX - (room2.x + room2.width)) < 0.25;
+        if (touchesLeft || touchesRight) {
+          const overlapStart = Math.max(dyStart, room2.y);
+          const overlapEnd = Math.min(dyEnd, room2.y + room2.height);
+          if (overlapEnd - overlapStart > 0.5) {
+            console.warn(
+              `Validation failed: Bathroom door for "${d.room}" shares a wall with kitchen/dining room "${room2.id}".`
+            );
+            return false;
+          }
+        }
+      }
+    }
+  }
+
+  // 7. Corridor Existence Check (warning only)
+  if (plotLength * plotBreadth > 600 && plan.floor === 0) {
+    const hasCorridor = rooms.some(
+      (r) =>
+        r.id.toLowerCase().includes("corridor") ||
+        r.id.toLowerCase().includes("passage") ||
+        r.id.toLowerCase().includes("lobby")
+    );
+    if (!hasCorridor) {
+      if (!plan.warnings) {
+        plan.warnings = [];
+      }
+      const warnMsg = "No corridor, passage or lobby detected for this layout. Consider adding circulation space for better flow.";
+      if (!plan.warnings.includes(warnMsg)) {
+        plan.warnings.push(warnMsg);
+      }
     }
   }
 

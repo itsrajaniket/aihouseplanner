@@ -54,4 +54,5 @@ export interface FloorPlan {
     height: number;
   };
   explanation: string;
+  warnings?: string[];
 }

@@ -86,6 +86,7 @@ export async function POST(req: NextRequest) {
       const fallbackLayout = floor === 0
         ? generateLocalLayout(inputs)
         : generateLocalUpperFloorLayout(inputs, floor, staircase);
+      validateFloorPlan(fallbackLayout);
       return NextResponse.json({
         success: true,
         layout: fallbackLayout,
@@ -410,6 +411,7 @@ Return ONLY the JSON matching the schema.`;
       const fallbackLayout = floor === 0
         ? generateLocalLayout(inputs!)
         : generateLocalUpperFloorLayout(inputs!, floor, staircase);
+      validateFloorPlan(fallbackLayout);
       return NextResponse.json({
         success: true,
         layout: {
@@ -445,6 +447,7 @@ Return ONLY the JSON matching the schema.`;
       const fallbackLayout = reqFloor === 0
         ? generateLocalLayout(safeInputs)
         : generateLocalUpperFloorLayout(safeInputs, reqFloor, reqStaircase);
+      validateFloorPlan(fallbackLayout);
         
       return NextResponse.json({
         success: true,

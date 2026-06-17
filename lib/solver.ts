@@ -342,8 +342,37 @@ export function generateDoorsAndWindows(
 
       const mainDoorWidth = 3.5;
       const span = mainWall === "top" || mainWall === "bottom" ? room.width : room.height;
-      const position = Math.max(1.0, Math.round(((span - mainDoorWidth) / 2) * 10) / 10);
-      doors.push({ room: room.id, wall: mainWall, position, width: mainDoorWidth });
+      
+      // Rule 4: Center third, biased slightly toward staircase side
+      const minCenter = span / 3;
+      const maxCenter = (2 * span) / 3 - mainDoorWidth;
+      const midPos = (span - mainDoorWidth) / 2;
+
+      let mainPos = midPos;
+      const staircase = rooms.find((r) => r.id === "staircase");
+      if (staircase) {
+        if (mainWall === "top" || mainWall === "bottom") {
+          const stairCenterX = staircase.x + staircase.width / 2;
+          const roomCenterX = room.x + room.width / 2;
+          if (stairCenterX < roomCenterX) {
+            mainPos = minCenter;
+          } else {
+            mainPos = maxCenter;
+          }
+        } else {
+          const stairCenterY = staircase.y + staircase.height / 2;
+          const roomCenterY = room.y + room.height / 2;
+          if (stairCenterY < roomCenterY) {
+            mainPos = minCenter;
+          } else {
+            mainPos = maxCenter;
+          }
+        }
+      }
+
+      // Rule 5: 2ft clearance from room corner
+      mainPos = Math.max(2.0, Math.min(span - mainDoorWidth - 2.0, mainPos));
+      doors.push({ room: room.id, wall: mainWall, position: Math.round(mainPos * 10) / 10, width: mainDoorWidth });
 
       // 2. Internal connection door
       const internalWalls = shared.filter((s) => s.other.id !== "parking" && s.other.id !== "garden");
@@ -357,19 +386,31 @@ export function generateDoorsAndWindows(
               s.other.id.startsWith("bathroom")
           ) || internalWalls[0];
         const doorWidth = 3.0;
-        const localPos =
+        const wallSpan = prefWall.wall === "top" || prefWall.wall === "bottom" ? room.width : room.height;
+        const localStart =
           prefWall.wall === "top" || prefWall.wall === "bottom"
-            ? prefWall.overlapStart + (prefWall.length - doorWidth) / 2 - room.x
-            : prefWall.overlapStart + (prefWall.length - doorWidth) / 2 - room.y;
-        const clampedPos = Math.max(
-          0.5,
-          Math.min(
-            (prefWall.wall === "top" || prefWall.wall === "bottom" ? room.width : room.height) -
-              doorWidth -
-              0.5,
-            localPos
-          )
-        );
+            ? prefWall.overlapStart - room.x
+            : prefWall.overlapStart - room.y;
+        const localEnd =
+          prefWall.wall === "top" || prefWall.wall === "bottom"
+            ? prefWall.overlapEnd - room.x
+            : prefWall.overlapEnd - room.y;
+
+        const localPos = localStart + (localEnd - localStart - doorWidth) / 2;
+        
+        // Rule 5: 2ft clearance
+        let minPos = Math.max(localStart, 2.0);
+        let maxPos = Math.min(localEnd - doorWidth, wallSpan - doorWidth - 2.0);
+        
+        let clampedPos = localPos;
+        if (minPos <= maxPos) {
+          clampedPos = Math.max(minPos, Math.min(maxPos, localPos));
+        } else {
+          const safeMin = Math.min(2.0, (wallSpan - doorWidth) / 2);
+          const safeMax = Math.max(wallSpan - doorWidth - 2.0, (wallSpan - doorWidth) / 2);
+          clampedPos = Math.max(safeMin, Math.min(safeMax, localPos));
+        }
+
         doors.push({
           room: room.id,
           wall: prefWall.wall,
@@ -380,15 +421,43 @@ export function generateDoorsAndWindows(
     } else {
       const doorWidth = isBath ? 2.5 : isPooja ? 2.0 : 3.0;
 
+      // Rule 3: For bathrooms, place on wall shared with bedroom or corridor only
       let validShared = shared.filter((s) => {
-        if (isBath && (s.other.id === "kitchen" || s.other.id === "dining")) {
-          return false;
+        if (isBath) {
+          const isBedroom = s.other.id.startsWith("bedroom");
+          const isCorridor =
+            s.other.id.includes("corridor") ||
+            s.other.id.includes("passage") ||
+            s.other.id.includes("lobby") ||
+            s.other.id === "living" ||
+            s.other.id === "family";
+          return isBedroom || isCorridor;
         }
         if (isPooja && s.other.id.startsWith("bathroom")) {
           return false;
         }
         return s.other.id !== "parking" && s.other.id !== "garden";
       });
+
+      if (isBath) {
+        // Rule 3: Prefer corridor wall if both exist
+        const corridorWalls = validShared.filter(
+          (s) =>
+            s.other.id.includes("corridor") ||
+            s.other.id.includes("passage") ||
+            s.other.id.includes("lobby") ||
+            s.other.id === "living" ||
+            s.other.id === "family"
+        );
+        if (corridorWalls.length > 0) {
+          validShared = corridorWalls;
+        } else {
+          const bedroomWalls = validShared.filter((s) => s.other.id.startsWith("bedroom"));
+          if (bedroomWalls.length > 0) {
+            validShared = bedroomWalls;
+          }
+        }
+      }
 
       if (validShared.length === 0) {
         validShared = shared;
@@ -421,8 +490,48 @@ export function generateDoorsAndWindows(
             ? chosen.overlapEnd - room.x
             : chosen.overlapEnd - room.y;
 
-        const localPos = localStart + (localEnd - localStart - doorWidth) / 2;
-        const clampedPos = Math.max(0.5, Math.min(wallSpan - doorWidth - 0.5, localPos));
+        let localPos = localStart + (localEnd - localStart - doorWidth) / 2;
+
+        let minPos = localStart;
+        let maxPos = localEnd - doorWidth;
+
+        // Rule 1: Bedrooms middle third, avoiding first/last 3ft
+        if (room.id.startsWith("bedroom")) {
+          minPos = Math.max(minPos, wallSpan / 3, 3.0);
+          maxPos = Math.min(maxPos, (2 * wallSpan) / 3 - doorWidth, wallSpan - 3.0 - doorWidth);
+        }
+
+        // Rule 2: Kitchens 2ft corner clearance, closest to dining/living
+        if (room.id === "kitchen") {
+          minPos = Math.max(minPos, 2.0);
+          maxPos = Math.min(maxPos, wallSpan - 2.0 - doorWidth);
+          if (chosen.wall === "top" || chosen.wall === "bottom") {
+            if (chosen.other.x + chosen.other.width / 2 < room.x + room.width / 2) {
+              localPos = minPos;
+            } else {
+              localPos = maxPos;
+            }
+          } else {
+            if (chosen.other.y + chosen.other.height / 2 < room.y + room.height / 2) {
+              localPos = minPos;
+            } else {
+              localPos = maxPos;
+            }
+          }
+        }
+
+        // Rule 5: 2ft corner clearance
+        minPos = Math.max(minPos, 2.0);
+        maxPos = Math.min(maxPos, wallSpan - 2.0 - doorWidth);
+
+        let clampedPos = localPos;
+        if (minPos <= maxPos) {
+          clampedPos = Math.max(minPos, Math.min(maxPos, localPos));
+        } else {
+          const safeMin = Math.min(2.0, (wallSpan - doorWidth) / 2);
+          const safeMax = Math.max(wallSpan - doorWidth - 2.0, (wallSpan - doorWidth) / 2);
+          clampedPos = Math.max(safeMin, Math.min(safeMax, localPos));
+        }
 
         doors.push({
           room: room.id,
@@ -431,10 +540,13 @@ export function generateDoorsAndWindows(
           width: doorWidth,
         });
       } else {
+        const wallSpan = room.width;
+        let mainPos = (wallSpan - doorWidth) / 2;
+        mainPos = Math.max(2.0, Math.min(wallSpan - doorWidth - 2.0, mainPos));
         doors.push({
           room: room.id,
           wall: "bottom",
-          position: Math.max(0.5, Math.round(((room.width - doorWidth) / 2) * 10) / 10),
+          position: Math.round(mainPos * 10) / 10,
           width: doorWidth,
         });
       }

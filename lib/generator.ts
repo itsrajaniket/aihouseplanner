@@ -6,6 +6,49 @@ function snap(v: number): number {
   return Math.round(v * 2) / 2;
 }
 
+function checkGeometry(
+  bedrooms: number,
+  hasParking: boolean,
+  hasGarden: boolean,
+  W: number,
+  H: number
+): boolean {
+  const S = W <= 22 ? 0.5 : 1.5;
+  const uW = snap(W - 2 * S);
+  const uH = snap(H - 2 * S);
+
+  if (W <= 22) {
+    // Narrow plot layout
+    if (hasParking && uW - 10.0 < 9.7) {
+      return false; // Living room width would be too small
+    }
+
+    const minBackH = 18.1;
+    const minLeftFrontH = bedrooms >= 2 ? 21.1 : 11.7;
+    const minRightFrontH = hasParking ? 18.2 : hasGarden ? 16.2 : 8.2;
+    const minFrontH = Math.max(minLeftFrontH, minRightFrontH);
+
+    if (uH - 3.5 < minBackH + minFrontH) {
+      return false;
+    }
+    return true;
+  } else {
+    // Standard plot
+    if (bedrooms === 1) {
+      const backH = 12.2;
+      const frontH = uH - backH;
+      if (frontH < 11.7) return false;
+      return true;
+    } else {
+      const backH = Math.max(12.2, snap(uH * 0.35));
+      const frontH = hasParking ? 26.4 : hasGarden ? 18.2 : Math.max(10.2, snap(uH * 0.30));
+      const middleH = uH - backH - frontH;
+      if (middleH < 9.7) return false;
+      return true;
+    }
+  }
+}
+
 export function generateLocalLayout(inputs: PlotInputs): FloorPlan {
   const {
     lengthFt: W,
@@ -84,10 +127,10 @@ export function generateLocalLayout(inputs: PlotInputs): FloorPlan {
     return area;
   };
 
-  // Drop rooms until total minimum area fits within 90% of usable area
+  // Drop rooms until total minimum area fits within 90% of usable area AND geometry is valid
   while (
-    getMinArea(activeBedrooms, activeBathrooms, activeParking, activePooja, activeServantQuarters, activeGarden) >
-    usableArea * 0.90
+    getMinArea(activeBedrooms, activeBathrooms, activeParking, activePooja, activeServantQuarters, activeGarden) > usableArea * 0.90 ||
+    !checkGeometry(activeBedrooms, activeParking, activeGarden, W, H)
   ) {
     if (activePooja) {
       activePooja = false;
@@ -120,21 +163,29 @@ export function generateLocalLayout(inputs: PlotInputs): FloorPlan {
   // ─── BUILD SLICING TREE DYNAMICALLY ───
   if (W <= 22 && H >= 35) {
     // ─── NARROW PLOT LAYOUT (e.g. 20x40 vertical layout) ───
-    const topRow: LayoutNode = {
-      type: "split",
-      direction: "horizontal",
-      ratio: 11.5 / uW, // Master Bed width >= 11.5 ft
-      children: [
-        { type: "room", id: "bedroom-master", label: "Master Bedroom" },
-        { type: "room", id: "kitchen", label: "Kitchen" },
-      ],
-    };
+    const minBackH = 18.1;
+    const minLeftFrontH = activeBedrooms >= 2 ? 21.1 : 11.7;
+    const minRightFrontH = activeParking ? 18.2 : activeGarden ? 16.2 : 8.2;
+    const minFrontH = Math.max(minLeftFrontH, minRightFrontH);
 
+    const minHeightExcludingCorridor = minBackH + minFrontH;
+    const remainingHeight = (uH - 3.5) - minHeightExcludingCorridor;
+
+    let backH = minBackH;
+    let frontH = minFrontH;
+
+    if (remainingHeight > 0) {
+      const backProp = minBackH / minHeightExcludingCorridor;
+      backH = snap(minBackH + remainingHeight * backProp);
+      frontH = snap(uH - 3.5 - backH);
+    }
+
+    // 1. Back Zone: Master Bed + Bathrooms (left) and Kitchen/Bed 3 (right)
     let bathroomsNode: LayoutNode;
     if (activeBathrooms >= 2) {
       bathroomsNode = {
         type: "split",
-        direction: "vertical",
+        direction: "horizontal",
         ratio: 0.5,
         children: [
           { type: "room", id: "bathroom-1", label: "Bathroom 1" },
@@ -145,55 +196,106 @@ export function generateLocalLayout(inputs: PlotInputs): FloorPlan {
       bathroomsNode = { type: "room", id: "bathroom-1", label: "Bathroom" };
     }
 
-    const middleRow: LayoutNode = {
+    const leftColumnBack: LayoutNode = {
       type: "split",
-      direction: "horizontal",
-      ratio: 4.5 / uW, // Bathrooms width = 4.5 ft
-      children: [bathroomsNode, { type: "room", id: "living", label: "Drawing / Living" }],
+      direction: "vertical",
+      ratio: Math.max(0.1, Math.min(0.9, (backH - 6.4) / backH)),
+      children: [
+        { type: "room", id: "bedroom-master", label: "Master Bedroom" },
+        bathroomsNode,
+      ],
     };
 
-    let bottomRowLeft: LayoutNode;
-    if (activeBedrooms >= 2) {
-      bottomRowLeft = {
+    let rightColumnBack: LayoutNode;
+    if (activeBedrooms >= 3) {
+      rightColumnBack = {
         type: "split",
         direction: "vertical",
-        ratio: 10 / 18, // Bed 2 height = 10 ft, Staircase height = 8 ft
+        ratio: Math.max(0.1, Math.min(0.9, 9.4 / backH)),
         children: [
-          { type: "room", id: "bedroom-2", label: "Bedroom 2" },
-          { type: "room", id: "staircase", label: "Staircase" },
+          { type: "room", id: "bedroom-3", label: "Bedroom 3" },
+          { type: "room", id: "kitchen", label: "Kitchen" },
         ],
       };
     } else {
-      bottomRowLeft = { type: "room", id: "staircase", label: "Staircase" };
+      rightColumnBack = { type: "room", id: "kitchen", label: "Kitchen" };
     }
 
-    let bottomRow: LayoutNode;
-    if (activeParking) {
-      bottomRow = {
+    const backZone: LayoutNode = {
+      type: "split",
+      direction: "horizontal",
+      ratio: Math.max(0.1, Math.min(0.9, 11.5 / uW)),
+      children: [leftColumnBack, rightColumnBack],
+    };
+
+    // 2. Corridor Zone: 3.5ft horizontal strip full width
+    const corridorRoom: LayoutNode = {
+      type: "room",
+      id: "corridor",
+      label: "Passage",
+    };
+
+    // 3. Front Zone: Living Room + Bedroom 2 (left) and Staircase + Parking/Garden (right)
+    let leftColumnFront: LayoutNode;
+    if (activeBedrooms >= 2) {
+      leftColumnFront = {
         type: "split",
-        direction: "horizontal",
-        ratio: (uW - 10) / uW, // Parking width = 10 ft
-        children: [bottomRowLeft, { type: "room", id: "parking", label: "Car Parking" }],
+        direction: "vertical",
+        ratio: Math.max(0.1, Math.min(0.9, 9.4 / frontH)),
+        children: [
+          { type: "room", id: "bedroom-2", label: "Bedroom 2" },
+          { type: "room", id: "living", label: "Drawing / Living" },
+        ],
       };
     } else {
-      bottomRow = bottomRowLeft;
+      leftColumnFront = { type: "room", id: "living", label: "Drawing / Living" };
     }
 
-    const backH = 12.2;
-    const frontH = activeParking ? 18.2 : 10.2;
-    const middleH = uH - backH - frontH;
+    let rightColumnFront: LayoutNode;
+    if (activeParking) {
+      rightColumnFront = {
+        type: "split",
+        direction: "vertical",
+        ratio: Math.max(0.1, Math.min(0.9, 8.2 / frontH)),
+        children: [
+          { type: "room", id: "staircase", label: "Staircase" },
+          { type: "room", id: "parking", label: "Car Parking" },
+        ],
+      };
+    } else if (activeGarden) {
+      rightColumnFront = {
+        type: "split",
+        direction: "vertical",
+        ratio: Math.max(0.1, Math.min(0.9, 8.2 / frontH)),
+        children: [
+          { type: "room", id: "staircase", label: "Staircase" },
+          { type: "room", id: "garden", label: "Garden / Lawn" },
+        ],
+      };
+    } else {
+      rightColumnFront = { type: "room", id: "staircase", label: "Staircase" };
+    }
 
+    const rightColWidth = activeParking ? 10.0 : 4.5;
+    const frontZone: LayoutNode = {
+      type: "split",
+      direction: "horizontal",
+      ratio: Math.max(0.1, Math.min(0.9, (uW - rightColWidth) / uW)),
+      children: [leftColumnFront, rightColumnFront],
+    };
+
+    // 4. Root Slicing Node
     rootNode = {
       type: "split",
       direction: "vertical",
       ratio: backH / uH,
       children: [
-        topRow,
+        backZone,
         {
           type: "split",
           direction: "vertical",
-          ratio: middleH / (uH - backH),
-          children: [middleRow, bottomRow],
+          ratio: 3.5 / (uH - backH),
+          children: [corridorRoom, frontZone],
         },
       ],
     };
@@ -341,7 +443,7 @@ export function generateLocalLayout(inputs: PlotInputs): FloorPlan {
         frontRowRight = {
           type: "split",
           direction: "vertical",
-          ratio: 0.5,
+          ratio: 8.2 / 18.2,
           children: [
             { type: "room", id: "staircase", label: "Staircase" },
             { type: "room", id: "garden", label: "Garden / Lawn" },
@@ -357,7 +459,7 @@ export function generateLocalLayout(inputs: PlotInputs): FloorPlan {
       };
 
       const backH = Math.max(12.2, snap(uH * 0.35));
-      const frontH = activeParking ? 26.4 : Math.max(10.2, snap(uH * 0.30));
+      const frontH = activeParking ? 26.4 : activeGarden ? 18.2 : Math.max(10.2, snap(uH * 0.30));
       const middleH = uH - backH - frontH;
 
       rootNode = {

@@ -150,8 +150,12 @@ The heart of our geometric solver engine. It performs the mathematics of transla
   * *Internal Logic*: 
     1. **Adjacency Check**: Intersects room segments (sharing a boundary within `0.25` ft) to identify shared internal walls and external walls.
     2. **Windows**: Places windows centering them on external walls. Small rooms like bathrooms get `2.0` ft ventilation windows; bedrooms and living rooms get large `4.0` ft windows.
-    3. **Main Entrance**: Centers a `3.5` ft main entrance door on the road-facing wall of the living room.
-    4. **Internal Doors**: Places doors only on internal shared walls, prioritizing corridors, lobbies, and living rooms. Bathroom doors are placed adjacent to bedrooms, avoiding kitchen openings.
+    3. **Main Entrance (Rule 4)**: Places a `3.5` ft main entrance door on the road-facing wall of the living room, restricted to the center third and biased slightly toward the staircase.
+    4. **Internal Doors (Rules 1, 2, 3, 5)**: Places doors on internal shared walls with strict layout rules:
+       * *Bedrooms*: Restricts doors to the middle third of the shared wall, avoiding the first/last 3ft (bed/side table zones).
+       * *Kitchens*: Avoids the first/last 2ft of corners (counter zones) and biases placement toward the dining/living room side.
+       * *Bathrooms*: Restricts doors to walls shared with bedrooms or corridors only, preferring corridor walls if both exist.
+       * *Corner Clearance*: Enforces a minimum of 2ft of clear wall space on both sides of any door opening, falling back to centered snapping on extremely tight rooms.
 
 ---
 
@@ -165,7 +169,7 @@ This acts as our local CAD generator. If the AI generator fails, this local code
     1. **Usable Space**: Subtracts a setback margin around the plot (`0.5` ft for narrow plots <= 22 ft, `1.5` ft for standard plots) to represent boundaries.
     2. **Adaptive Room Dropping**: Evaluates the usable area. If the plot is too small, it drops non-essential rooms recursively from a priority stack (`Pooja Room` -> `Extra Bathroom` -> `Bedroom 3` -> `Car Parking` -> `Bedroom 2` -> `Garden`) to ensure remaining rooms satisfy minimum sizing guidelines.
     3. **Plot Slicing Selection**:
-       - *Narrow Plots (<= 22 ft width)*: Designs a linear slicing layout splitting the plot into three vertical zones: Back (Master Bedroom + Kitchen), Middle (Living Room + Bathrooms column), and Front (Staircase + Parking or Bedroom 2).
+       - *Narrow Plots (<= 22 ft width)*: Divides the plot into three vertical zones: Back (Master Bedroom + Kitchen split left/right, with bathrooms split top/bottom on the bedroom side), Middle (3.5 ft full-width horizontal corridor/passage), and Front (Living Room + Staircase split left/right, with optional vertical splits for Bedroom 2 and Parking/Garden). The corridor is placed at roughly 40% depth from the front.
        - *Standard Plots*: Generates a 3-row zones layout (Back: Master Bed + Bath + Kitchen; Middle: Bedroom 2 + Bathroom 2 + Pooja; Front: Living Room + Staircase + Parking/Garden).
     4. Calls `solveLayout` and `generateDoorsAndWindows` to complete coordinates resolution.
 * **`generateLocalUpperFloorLayout(inputs, floorNumber, staircase)`**:
@@ -300,7 +304,7 @@ To help maintain, debug, and review the codebase, this section documents the arc
 * **Hardcoded Furniture Coordinates**: Furniture vectors are positioned based on fixed distance offsets from the internal room corners. If a room shape is extremely wide or thin, the furniture may align awkwardly or clip boundaries.
 
 ### 🔴 Known Issues & Edge Cases
-* **Door-Furniture Intersections**: Doors are placed mathematically at the center of shared room walls. Because furniture is also drawn relative to the room boundaries, it is possible for a door swing panel to overlap with a bed headboard or dining chairs in very small rooms.
+* **Door-Furniture Intersections**: Doors are placed with strict layout rules (e.g. avoiding the first/last 3ft of bedroom walls to clear headboard/side tables, and keeping 2ft clear of kitchen corners). However, in extremely small rooms under procedural fallback, the door may fallback to centered snapping to maintain a minimum clearance, which can occasionally intersect furniture.
 * **Narrow Plot Vastu Compromises**: On narrow plots (e.g., width <= 22 ft), forcing Vastu rules (Master Bedroom in South-West, Kitchen in South-East) makes the layout tree very rigid. This can result in narrow corridors or bathrooms squeezed between rooms.
 * **Snapped Grid Snaps**: Snapping solved coordinates to the nearest `0.1` ft can sometimes leave tiny gaps of `0.05` ft between internal wall lines on highly divided layout trees.
 * **Upper Floor Logic Variations**: The structural alignment of columns and load-bearing walls is currently ignored. While the staircase matches vertically, a bedroom on the first floor might sit directly over a kitchen void from the ground floor, which is structurally unbuildable without pillars.
