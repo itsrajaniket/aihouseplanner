@@ -131,6 +131,7 @@ This file defines all core TypeScript interfaces that secure type-safety across 
   * `windows`: Array of `Window` elements.
   * `staircase`: Coordinates `(x, y, width, height)` of the staircase (locked across floors).
   * `explanation`: Text detailing the Vastu alignment or layout decisions.
+  * `warnings`: Optional array of warning strings (e.g. corridor checks).
 
 ---
 
@@ -186,9 +187,11 @@ Before sending any plan to the frontend, this utility validates the structure to
   * *Checks performed*:
     1. **Boundary check**: Verifies that no room coordinates exceed `plotLength` or `plotBreadth` (with a `0.1` ft allowance).
     2. **Overlap check**: Runs an Axis-Aligned Bounding Box (AABB) intersection check between all rooms (excluding garden/parking) to ensure they do not intersect.
-    3. **Minimum Room Sizes (Section 10)**: Checks minimum dimensions (e.g., Master Bed >= 11x12 ft, Kitchen >= 7x9 ft, Staircase >= 3.5x8 ft) with looser snas (tolerance of `0.55` ft) on narrow plots <= 22 ft.
+    3. **Minimum Room Sizes**: Checks minimum dimensions (e.g., Master Bed >= 11x12 ft, Kitchen >= 7x9 ft, Staircase >= 3.5x8 ft) with a flat tolerance of `0.3` ft for all layouts.
     4. **Aspect Ratio Check**: Ensures no room is longer than a 3:1 ratio (preventing corridor-like habitable rooms).
     5. **Door Existence Check**: Confirms that every habitable room has at least one door connecting to the rest of the floor plan.
+    6. **Corridor Existence Check**: If the plot area > 600 sqft and it is the Ground Floor, verifies that at least one corridor/passage/lobby exists (adds warning otherwise).
+    7. **Bathroom Isolation Check**: Verifies that no bathroom/toilet/wc door shares a wall with kitchen/dining rooms, returning a failure if violated.
 
 ---
 
@@ -235,10 +238,15 @@ The UI control board built with React and Tailwind CSS v4.
 
 #### 📄 [FloorPlanCanvas.tsx](file:///c:/Users/ANIKET/Desktop/Aihouseplan/components/FloorPlanCanvas.tsx)
 The visual rendering engine. Takes the generated JSON and outputs a 2D CAD floor plan.
-* **`ROOM_STYLES`**: Defines curated pastel color coding, custom border colors, text labels, and emojis per room type (e.g., `#F3F8FC` soft blue for master bedroom, `#FFFBEA` gold for pooja room, `#FCFBF7` slate for living).
-* **`renderFurniture(room)`**: Converts room offsets and draws vectors representing double beds (pillows and blankets), L-shaped kitchen counters (stove burners and sinks), dining tables, bathroom WC toilets, parking cars, and pooja altars.
-* **`renderStaircase(room)`**: Renders staircase treads, center separation guidelines, direction arrows, and "UP" markers.
-* **`renderDoor(door, room)` & `renderWindow(win, room)`**: Renders door swings (swing panel and radial arc swing direction) and window apertures (sill borders and cyan-colored glass panes).
+* **`ROOM_STYLES`**: Defines curated pastel color coding, custom border colors, text labels, and emojis per room type.
+* **`furnitureScale` & `clampedRect` Helpers**:
+  * `furnitureScale`: Computes a scaling factor based on the room's area to resize overlay furniture (under 80 sq ft is 0.65x, under 120 is 0.80x, under 180 is 0.90x).
+  * `clampedRect`: Keeps all drawn furniture within inner bounds of the room, preventing overlap/clipping, and hides icons if the room is too small.
+* **`renderFurniture(room)`**: Converts room offsets and draws scaled, clamped vectors representing beds, L-shaped kitchen counters, dining tables, toilets, cars, and altars.
+* **`renderStaircase(room)`**: Draws scaled, evenly spaced staircase treads (clamped between 2 and 12 treads) and hides direction indicators on short runs (<60 units).
+* **`renderDoor(door, room, idx)`**: Renders door swings with available depth checking (draws `"↔"` text indicator if too tight), hinge location optimization (swings flat against adjacent wall), and uses SVG `<clipPath>` masking to contain the swing arc.
+* **`renderWindow(win, room, idx)`**: Renders window glass panes and sills.
+* **Dynamic Label Rendering**: Adapts room labels based on available width: abbreviations for < 40 units, full name-only for 40-70 units, and full name + dimensions + emojis for > 70 units.
 * **`renderSVGContent()`**: Bundles structural elements together:
   * Grid paper background and outer plot boundary line.
   * Solid structural walls (`#334155` slate representing brickwork).
@@ -295,16 +303,14 @@ To help maintain, debug, and review the codebase, this section documents the arc
 * **Mathematical Overlap Immunity**: By using a recursive binary space partition (`solveLayout`) instead of predicting arbitrary `(x, y)` coordinate boxes, the rooms **can mathematically never overlap**. This eliminates the primary structural bug of traditional LLM coordinate generators.
 * **Smart Separation of Concerns**: The LLM is restricted to creating layout hierarchies and topologies (which rooms are adjacent to what), while the local TypeScript engine handles coordinate details, wall thicknesses, and geometry boundaries. This reduces prompt length and increases layout correctness.
 * **Extremely Resilient Fail-Safes**: If the Gemini API experiences network timeouts, rate-limiting, missing API keys, or outputs invalid room shapes that fail safety checks, the validator intercepts it and serves a clean, local procedural plan. The user is guaranteed to see a beautiful layout under any condition.
-* **SVG CAD Fidelity**: Instead of plain boxes, [FloorPlanCanvas.tsx](file:///c:/Users/ANIKET/Desktop/Aihouseplan/components/FloorPlanCanvas.tsx) renders complete visual details (double beds, kitchen hobs, dining table sets, bathrooms WC bowls, staircase arrow lines, and road access indicators), making the blueprint feel like an active CAD mockup.
+* **SVG CAD Fidelity & Collision-Free Rendering**: [FloorPlanCanvas.tsx](file:///c:/Users/ANIKET/Desktop/Aihouseplan/components/FloorPlanCanvas.tsx) renders complete, high-fidelity visual elements. Using dynamic scaling, position clamping, door depth indicators, hinge wall alignment, and SVG clip path masking, all visual elements are guaranteed to sit cleanly inside their rooms without overlapping or clipping walls.
 
 ### 🟡 The Bad (Technical Debt & Limitations)
 * **Snapping Vulnerability in Staircase Locking**: The `adjustTreeForFixedNode` adjuster walks the layout tree and forces split ratios to lock the staircase coordinate. If the AI-generated layout places the staircase inside a deeply nested branch or groups it with incompatible rooms, adjusting the ratios can squeeze neighboring rooms down to narrow strips, leading to validation failures and triggering the procedural fallback.
 * **Naïve Setback Margins**: The current system applies a flat setback (`0.5` ft for narrow plots, `1.5` ft for wide plots) uniformly on all sides. In realistic Indian municipal bylaws, setback regulations require asymmetrical space (e.g. larger front setbacks for roads, and smaller margins on the sides).
 * **Stateless API Requests**: The backend is stateless. When generating upper floors, the frontend must pass the ground floor's exact staircase boundaries alongside client inputs. If the user clears the page state, the correlation between ground and first floor elements is lost.
-* **Hardcoded Furniture Coordinates**: Furniture vectors are positioned based on fixed distance offsets from the internal room corners. If a room shape is extremely wide or thin, the furniture may align awkwardly or clip boundaries.
 
 ### 🔴 Known Issues & Edge Cases
-* **Door-Furniture Intersections**: Doors are placed with strict layout rules (e.g. avoiding the first/last 3ft of bedroom walls to clear headboard/side tables, and keeping 2ft clear of kitchen corners). However, in extremely small rooms under procedural fallback, the door may fallback to centered snapping to maintain a minimum clearance, which can occasionally intersect furniture.
 * **Narrow Plot Vastu Compromises**: On narrow plots (e.g., width <= 22 ft), forcing Vastu rules (Master Bedroom in South-West, Kitchen in South-East) makes the layout tree very rigid. This can result in narrow corridors or bathrooms squeezed between rooms.
 * **Snapped Grid Snaps**: Snapping solved coordinates to the nearest `0.1` ft can sometimes leave tiny gaps of `0.05` ft between internal wall lines on highly divided layout trees.
 * **Upper Floor Logic Variations**: The structural alignment of columns and load-bearing walls is currently ignored. While the staircase matches vertically, a bedroom on the first floor might sit directly over a kitchen void from the ground floor, which is structurally unbuildable without pillars.

@@ -94,9 +94,20 @@ Then navigate to `http://localhost:3000` in your web browser.
   - Vastu orientation coordinates align according to the cardinal direction facing the main access road.
   - Built-in grid overlay allows structural inspection of quadrant alignments in real time.
 
-### Adaptive room sizing guidelines
-- **What it does**: Adjusts target room footprints dynamically when total plot width or length limits are changed.
-- **User experience**: Users adjust the dimension sliders, and the generator instantly calculates setback boundaries to partition remaining areas proportionally.
+### Adaptive room sizing & dropping ⭐
+- **What it does**: Adjusts room footprint calculations dynamically based on plot dimensions. If total minimum required area exceeds 90% of usable plot area, it recursively drops rooms by priority (pooja → servant quarters → extra bathroom → bedroom 3 → parking → bedroom 2 → garden) *before* partitioning the layout tree.
+- **User experience**: Standard dimension sliders automatically adapt, preventing invalid overlapping layout configurations on tight plots.
+
+### Proportional CAD rendering & dynamic labels ⭐
+- **What it does**: Uses area-based scaling factor parameters (<80, <120, <180 sq ft) and a position clamp helper (`clampedRect`) to prevent furniture symbols from overlapping walls. Adapts text size dynamically and abbrevates labels (e.g. `"MB"`, `"WC"`, `"K"`) in narrow room cells.
+- **User experience**: Blueprint drawings look highly professional, clear, and clean on any monitor size or screen resolution.
+
+### Door & window geometry constraints
+- **What it does**: Automatically computes door/window apertures. Places bedroom doors in the middle third only (avoiding headboards), kitchen doors away from counters, and bathroom doors on corridor/bedroom walls only.
+- **User experience**: Door swing arcs automatically orient to rest flat against adjacent corners, and use SVG `<clipPath>` masks to avoid wall collisions. Tight layouts automatically fallback to dashed sliding indicators with `"↔"` text markers.
+
+### Strict validation pipeline
+- **What it does**: Evaluates layout plans against a strict flat `0.3` ft sizing tolerance. Verifies Ground Floor corridor existence for plots > 600 sqft and returns validation failures if a bathroom door shares a wall directly with a kitchen or dining room.
 
 ---
 
@@ -288,26 +299,21 @@ Open `http://localhost:3000` in your web browser. You should see the user settin
 
 ### Usable margin adjustments
 
-To modify the outer setback margin surrounding the rooms, open [lib/generator.ts](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/generator.ts) and modify the variable `S` on line 33:
+To modify the outer setback margin surrounding the rooms, open [lib/generator.ts](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/generator.ts) and edit the setback `S` defined inside `checkGeometry` and `generateLocalLayout` (default is `0.5` ft for narrow plots <= 22 ft and `1.5` ft for wide plots):
 ```typescript
-// Change setback margins surrounding outer rooms (default 1.5 ft)
-const S = 1.5;
+const S = W <= 22 ? 0.5 : 1.5;
 ```
 
 ### Minimum size bounds for rooms
 
-To adjust the coordinate scaling constraints in the local layout engine, modify the sizing limits in [lib/generator.ts](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/generator.ts) under the respective room assignment blocks:
-```typescript
-// Adjust maximum and minimum scaling constraints
-const kitchenW = snap(clamp(uW * 0.30, 8, 12));
-```
+To adjust baseline room sizing dimensions, edit the minimum width and height values in the `getMinArea` function inside [lib/generator.ts](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/generator.ts) and their validation counterparts inside `validateFloorPlan` in [lib/validator.ts](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/validator.ts) (e.g. Master Bedroom: 11x12 ft, Kitchen: 7x9 ft, Bathroom: 4x6 ft, Staircase: 3.5x8 ft).
 
 ### SVG scale unit configurations
 
 To alter the SVG canvas scaling factor, edit the constant inside [components/FloorPlanCanvas.tsx](file:///c:/Users/ANIKET/Desktop/Aihouseplan/components/FloorPlanCanvas.tsx):
 ```typescript
 // Change coordinates scale units calculation (default 20 SVG units = 1 foot)
-const SCALE = 20;
+const SC = 20;
 ```
 
 ---

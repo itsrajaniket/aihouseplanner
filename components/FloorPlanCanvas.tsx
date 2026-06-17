@@ -174,6 +174,62 @@ export default function FloorPlanCanvas({
     }
   }
 
+  // ── Helper: Scaling & Clamping ──────────────────────────────────────────
+  const furnitureScale = (roomW: number, roomH: number) => {
+    const area = roomW * roomH;
+    if (area < 80) return 0.65;
+    if (area < 120) return 0.80;
+    if (area < 180) return 0.90;
+    return 1.0;
+  };
+
+  const clampedRect = (
+    roomX: number,
+    roomY: number,
+    roomW: number,
+    roomH: number,
+    offsetX: number,
+    offsetY: number,
+    itemW: number,
+    itemH: number,
+    padding = 4
+  ) => {
+    const innerW = roomW - padding * 2;
+    const innerH = roomH - padding * 2;
+    if (itemW > innerW || itemH > innerH) {
+      return null;
+    }
+    const targetX = roomX + offsetX;
+    const targetY = roomY + offsetY;
+    const minX = roomX + padding;
+    const maxX = roomX + roomW - padding - itemW;
+    const minY = roomY + padding;
+    const maxY = roomY + roomH - padding - itemH;
+    const x = Math.max(minX, Math.min(targetX, maxX));
+    const y = Math.max(minY, Math.min(targetY, maxY));
+    return { x, y, w: itemW, h: itemH };
+  };
+
+  const getRoomAbbreviation = (id: string): string => {
+    if (id === "bedroom-master") return "MB";
+    if (id === "bedroom-2") return "B2";
+    if (id === "bedroom-3") return "B3";
+    if (id === "bedroom-guest") return "GB";
+    if (id === "living") return "L";
+    if (id === "kitchen") return "K";
+    if (id.startsWith("bathroom")) return "WC";
+    if (id === "staircase") return "S";
+    if (id === "parking") return "P";
+    if (id === "pooja") return "PJ";
+    if (id === "dining") return "D";
+    if (id === "garden") return "G";
+    if (id === "balcony") return "B";
+    if (id === "family") return "FL";
+    if (id === "terrace") return "T";
+    if (id === "study") return "ST";
+    return "R";
+  };
+
   // ── Render Furniture Vectors ────────────────────────────────────────────
   const renderFurniture = (room: Room) => {
     const { leftOffset, rightOffset, topOffset, bottomOffset } = getRoomOffsets(room);
@@ -191,148 +247,198 @@ export default function FloorPlanCanvas({
       return null;
     }
 
+    const scale = furnitureScale(room.width, room.height);
+
     if (room.id === "bedroom-master" || room.id.startsWith("bedroom-2") || room.id.startsWith("bedroom-3")) {
       // ── Double Bed Outline ──
-      const bW = Math.min(rw * 0.75, 95);
-      const bH = Math.min(rh * 0.8, 105);
-      const bx = rx + (rw - bW) / 2;
-      const by = ry + 12;
+      const bW = Math.min(rw * 0.75, 95) * scale;
+      const bH = Math.min(rh * 0.8, 105) * scale;
+      const bed = clampedRect(rx, ry, rw, rh, (rw - bW) / 2, 12 * scale, bW, bH, 4);
 
-      const pW = (bW - 14) / 2;
-      const pH = 15;
+      if (!bed) return null;
+
+      const pW = (bed.w - 14 * scale) / 2;
+      const pH = 15 * scale;
 
       return (
         <g key={`furn-${room.id}`} className="pointer-events-none select-none">
           {/* Bed frame */}
-          <rect x={bx} y={by} width={bW} height={bH} rx={4} fill="none" stroke={color} strokeWidth={stroke} />
+          <rect x={bed.x} y={bed.y} width={bed.w} height={bed.h} rx={4 * scale} fill="none" stroke={color} strokeWidth={stroke} />
           {/* Headboard */}
-          <rect x={bx} y={by} width={bW} height={10} rx={1} fill="none" stroke={color} strokeWidth={stroke} />
+          <rect x={bed.x} y={bed.y} width={bed.w} height={10 * scale} rx={1 * scale} fill="none" stroke={color} strokeWidth={stroke} />
           {/* Pillows */}
-          <rect x={bx + 5} y={by + 14} width={pW} height={pH} rx={2} fill="none" stroke={color} strokeWidth={stroke} />
-          <rect x={bx + bW - 5 - pW} y={by + 14} width={pW} height={pH} rx={2} fill="none" stroke={color} strokeWidth={stroke} />
+          <rect x={bed.x + 5 * scale} y={bed.y + 14 * scale} width={pW} height={pH} rx={2 * scale} fill="none" stroke={color} strokeWidth={stroke} />
+          <rect x={bed.x + bed.w - 5 * scale - pW} y={bed.y + 14 * scale} width={pW} height={pH} rx={2 * scale} fill="none" stroke={color} strokeWidth={stroke} />
           {/* Sheet fold */}
-          <line x1={bx} y1={by + bH * 0.42} x2={bx + bW} y2={by + bH * 0.42} stroke={color} strokeWidth={stroke} />
-          <line x1={bx} y1={by + bH * 0.42} x2={bx + bW * 0.18} y2={by + bH * 0.52} stroke={color} strokeWidth={stroke} />
+          <line x1={bed.x} y1={bed.y + bed.h * 0.42} x2={bed.x + bed.w} y2={bed.y + bed.h * 0.42} stroke={color} strokeWidth={stroke} />
+          <line x1={bed.x} y1={bed.y + bed.h * 0.42} x2={bed.x + bed.w * 0.18} y2={bed.y + bed.h * 0.52} stroke={color} strokeWidth={stroke} />
         </g>
       );
     }
 
     if (room.id === "living") {
       // ── Sofa Set ──
-      const sW = Math.min(rw * 0.7, 110);
-      const sH = 28;
-      const sx = rx + (rw - sW) / 2;
-      const sy = ry + 15;
+      const sW = Math.min(rw * 0.7, 110) * scale;
+      const sH = 28 * scale;
+      const sofa = clampedRect(rx, ry, rw, rh, (rw - sW) / 2, 15 * scale, sW, sH, 4);
+
+      if (!sofa) return null;
+
+      const tableW = 44 * scale;
+      const tableH = 24 * scale;
+      const table = clampedRect(rx, ry, rw, rh, (rw - tableW) / 2, 15 * scale + sH + 18 * scale, tableW, tableH, 4);
 
       return (
         <g key={`furn-${room.id}`} className="pointer-events-none select-none">
           {/* Sofa frame */}
-          <rect x={sx} y={sy} width={sW} height={sH} rx={3} fill="none" stroke={color} strokeWidth={stroke} />
+          <rect x={sofa.x} y={sofa.y} width={sofa.w} height={sofa.h} rx={3 * scale} fill="none" stroke={color} strokeWidth={stroke} />
           {/* Sofa Backrest */}
-          <rect x={sx} y={sy} width={sW} height={8} fill="none" stroke={color} strokeWidth={stroke} />
+          <rect x={sofa.x} y={sofa.y} width={sofa.w} height={8 * scale} fill="none" stroke={color} strokeWidth={stroke} />
           {/* Sofa Armrests */}
-          <rect x={sx} y={sy + 8} width={8} height={20} rx={1} fill="none" stroke={color} strokeWidth={stroke} />
-          <rect x={sx + sW - 8} y={sy + 8} width={8} height={20} rx={1} fill="none" stroke={color} strokeWidth={stroke} />
+          <rect x={sofa.x} y={sofa.y + 8 * scale} width={8 * scale} height={20 * scale} rx={1 * scale} fill="none" stroke={color} strokeWidth={stroke} />
+          <rect x={sofa.x + sofa.w - 8 * scale} y={sofa.y + 8 * scale} width={8 * scale} height={20 * scale} rx={1 * scale} fill="none" stroke={color} strokeWidth={stroke} />
           {/* Coffee Table */}
-          <rect x={rx + rw / 2 - 22} y={sy + sH + 18} width={44} height={24} rx={2} fill="none" stroke={color} strokeWidth={stroke} />
+          {table && (
+            <rect x={table.x} y={table.y} width={table.w} height={table.h} rx={2 * scale} fill="none" stroke={color} strokeWidth={stroke} />
+          )}
         </g>
       );
     }
 
     if (room.id === "kitchen") {
       // ── Kitchen L-Counter with Sink & Stove ──
-      const cW = 28; // counter width
+      const cW_scaled = 28 * scale;
+      const topCounter = clampedRect(rx, ry, rw, rh, 0, 0, rw, cW_scaled, 0);
+
+      if (!topCounter) return null;
+
+      const leftCounter = clampedRect(rx, ry, rw, rh, 0, cW_scaled, cW_scaled, rh - cW_scaled, 0);
+      
+      const stoveW = 36 * scale;
+      const stoveH = 18 * scale;
+      const stove = clampedRect(rx, ry, rw, rh, rw / 2 - stoveW / 2, 5 * scale, stoveW, stoveH, 4);
+
+      const sinkW = 18 * scale;
+      const sinkH = 26 * scale;
+      const sink = clampedRect(rx, ry, rw, rh, 5 * scale, rh / 2 - sinkH / 2, sinkW, sinkH, 4);
+
       return (
         <g key={`furn-${room.id}`} className="pointer-events-none select-none">
           {/* Top Counter */}
-          <rect x={rx} y={ry} width={rw} height={cW} fill="none" stroke={color} strokeWidth={stroke} />
+          <rect x={topCounter.x} y={topCounter.y} width={topCounter.w} height={topCounter.h} fill="none" stroke={color} strokeWidth={stroke} />
           {/* Left Counter */}
-          <rect x={rx} y={ry + cW} width={cW} height={rh - cW} fill="none" stroke={color} strokeWidth={stroke} />
+          {leftCounter && (
+            <rect x={leftCounter.x} y={leftCounter.y} width={leftCounter.w} height={leftCounter.h} fill="none" stroke={color} strokeWidth={stroke} />
+          )}
           {/* Stove */}
-          <g transform={`translate(${rx + rw / 2 - 18}, ${ry + 5})`}>
-            <rect x={0} y={0} width={36} height={18} rx={2} fill="none" stroke={color} strokeWidth={stroke} />
-            <circle cx={9} cy={9} r={5} fill="none" stroke={color} strokeWidth={stroke} />
-            <circle cx={27} cy={9} r={5} fill="none" stroke={color} strokeWidth={stroke} />
-          </g>
+          {stove && (
+            <g transform={`translate(${stove.x}, ${stove.y})`}>
+              <rect x={0} y={0} width={stove.w} height={stove.h} rx={2 * scale} fill="none" stroke={color} strokeWidth={stroke} />
+              <circle cx={9 * scale} cy={9 * scale} r={5 * scale} fill="none" stroke={color} strokeWidth={stroke} />
+              <circle cx={27 * scale} cy={9 * scale} r={5 * scale} fill="none" stroke={color} strokeWidth={stroke} />
+            </g>
+          )}
           {/* Sink */}
-          <g transform={`translate(${rx + 5}, ${ry + rh / 2 - 13})`}>
-            <rect x={0} y={0} width={18} height={26} rx={2} fill="none" stroke={color} strokeWidth={stroke} />
-            <circle cx={9} cy={13} r={6} fill="none" stroke={color} strokeWidth={stroke} />
-            <circle cx={9} cy={2} r={1.5} fill={color} />
-          </g>
+          {sink && (
+            <g transform={`translate(${sink.x}, ${sink.y})`}>
+              <rect x={0} y={0} width={sink.w} height={sink.h} rx={2 * scale} fill="none" stroke={color} strokeWidth={stroke} />
+              <circle cx={9 * scale} cy={13 * scale} r={6 * scale} fill="none" stroke={color} strokeWidth={stroke} />
+              <circle cx={9 * scale} cy={2 * scale} r={1.5} fill={color} />
+            </g>
+          )}
         </g>
       );
     }
 
     if (room.id.startsWith("bathroom")) {
       // ── Toilet WC & Sink ──
-      const tW = 20, tH = 30;
-      const tx = rx + 8, ty = ry + 8;
-      const sx = rx + rw - 24, sy = ry + 8;
+      const tW = 20 * scale;
+      const tH = 30 * scale;
+      const wc = clampedRect(rx, ry, rw, rh, 8 * scale, 8 * scale, tW, tH, 4);
+
+      if (!wc) return null;
+
+      const sW = 16 * scale;
+      const sH = 16 * scale;
+      const sink = clampedRect(rx, ry, rw, rh, rw - 24 * scale, 8 * scale, sW, sH, 4);
 
       return (
         <g key={`furn-${room.id}`} className="pointer-events-none select-none">
           {/* WC Tank */}
-          <rect x={tx} y={ty} width={tW} height={9} rx={1} fill="none" stroke={color} strokeWidth={stroke} />
+          <rect x={wc.x} y={wc.y} width={wc.w} height={9 * scale} rx={1 * scale} fill="none" stroke={color} strokeWidth={stroke} />
           {/* WC Bowl */}
-          <ellipse cx={tx + tW / 2} cy={ty + 19} rx={8} ry={11} fill="none" stroke={color} strokeWidth={stroke} />
-          <ellipse cx={tx + tW / 2} cy={ty + 19} rx={5} ry={8} fill="none" stroke={color} strokeWidth={stroke} opacity={0.5} />
+          <ellipse cx={wc.x + wc.w / 2} cy={wc.y + 19 * scale} rx={8 * scale} ry={11 * scale} fill="none" stroke={color} strokeWidth={stroke} />
+          <ellipse cx={wc.x + wc.w / 2} cy={wc.y + 19 * scale} rx={5 * scale} ry={8 * scale} fill="none" stroke={color} strokeWidth={stroke} opacity={0.5} />
           {/* Sink Basin */}
-          <rect x={sx} y={sy} width={16} height={16} rx={3} fill="none" stroke={color} strokeWidth={stroke} />
-          <circle cx={sx + 8} cy={sy + 8} r={5} fill="none" stroke={color} strokeWidth={stroke} />
+          {sink && (
+            <>
+              <rect x={sink.x} y={sink.y} width={sink.w} height={sink.h} rx={3 * scale} fill="none" stroke={color} strokeWidth={stroke} />
+              <circle cx={sink.x + 8 * scale} cy={sink.y + 8 * scale} r={5 * scale} fill="none" stroke={color} strokeWidth={stroke} />
+            </>
+          )}
         </g>
       );
     }
 
     if (room.id === "dining") {
       // ── Dining Table ──
-      const tW = 66, tH = 36;
-      const tx = rx + (rw - tW) / 2;
-      const ty = ry + (rh - tH) / 2;
+      const tW = 66 * scale;
+      const tH = 36 * scale;
+      const table = clampedRect(rx, ry, rw, rh, (rw - tW) / 2, (rh - tH) / 2, tW, tH, 4);
+
+      if (!table) return null;
 
       return (
         <g key={`furn-${room.id}`} className="pointer-events-none select-none">
           {/* Table */}
-          <rect x={tx} y={ty} width={tW} height={tH} rx={3} fill="none" stroke={color} strokeWidth={stroke} />
+          <rect x={table.x} y={table.y} width={table.w} height={table.h} rx={3 * scale} fill="none" stroke={color} strokeWidth={stroke} />
           {/* Chairs */}
-          <rect x={tx + 10} y={ty - 6} width={14} height={6} rx={1} fill="none" stroke={color} strokeWidth={stroke} />
-          <rect x={tx + tW - 24} y={ty - 6} width={14} height={6} rx={1} fill="none" stroke={color} strokeWidth={stroke} />
-          <rect x={tx + 10} y={ty + tH} width={14} height={6} rx={1} fill="none" stroke={color} strokeWidth={stroke} />
-          <rect x={tx + tW - 24} y={ty + tH} width={14} height={6} rx={1} fill="none" stroke={color} strokeWidth={stroke} />
+          <rect x={table.x + 10 * scale} y={table.y - 6 * scale} width={14 * scale} height={6 * scale} rx={1 * scale} fill="none" stroke={color} strokeWidth={stroke} />
+          <rect x={table.x + table.w - 24 * scale} y={table.y - 6 * scale} width={14 * scale} height={6 * scale} rx={1 * scale} fill="none" stroke={color} strokeWidth={stroke} />
+          <rect x={table.x + 10 * scale} y={table.y + table.h} width={14 * scale} height={6 * scale} rx={1 * scale} fill="none" stroke={color} strokeWidth={stroke} />
+          <rect x={table.x + table.w - 24 * scale} y={table.y + table.h} width={14 * scale} height={6 * scale} rx={1 * scale} fill="none" stroke={color} strokeWidth={stroke} />
         </g>
       );
     }
 
     if (room.id === "parking") {
       // ── Dotted Car Outline ──
-      const cW = Math.min(rw * 0.7, 75);
-      const cH = Math.min(rh * 0.78, 145);
-      const cx = rx + (rw - cW) / 2;
-      const cy = ry + (rh - cH) / 2;
+      const cW = Math.min(rw * 0.7, 75) * scale;
+      const cH = Math.min(rh * 0.78, 145) * scale;
+      const car = clampedRect(rx, ry, rw, rh, (rw - cW) / 2, (rh - cH) / 2, cW, cH, 4);
+
+      if (!car) return null;
 
       return (
         <g key={`furn-${room.id}`} className="pointer-events-none select-none">
           {/* Car Body */}
-          <rect x={cx} y={cy} width={cW} height={cH} rx={10} fill="none" stroke={color} strokeWidth={stroke} strokeDasharray="3,2" />
+          <rect x={car.x} y={car.y} width={car.w} height={car.h} rx={10 * scale} fill="none" stroke={color} strokeWidth={stroke} strokeDasharray="3,2" />
           {/* Windshield */}
-          <path d={`M ${cx + 8} ${cy + cH * 0.22} Q ${cx + cW / 2} ${cy + cH * 0.15} ${cx + cW - 8} ${cy + cH * 0.22}`} fill="none" stroke={color} strokeWidth={stroke} />
+          <path d={`M ${car.x + 8 * scale} ${car.y + car.h * 0.22} Q ${car.x + car.w / 2} ${car.y + car.h * 0.15} ${car.x + car.w - 8 * scale} ${car.y + car.h * 0.22}`} fill="none" stroke={color} strokeWidth={stroke} />
           {/* Rear Windshield */}
-          <path d={`M ${cx + 8} ${cy + cH * 0.78} Q ${cx + cW / 2} ${cy + cH * 0.85} ${cx + cW - 8} ${cy + cH * 0.78}`} fill="none" stroke={color} strokeWidth={stroke} />
+          <path d={`M ${car.x + 8 * scale} ${car.y + car.h * 0.78} Q ${car.x + car.w / 2} ${car.y + car.h * 0.85} ${car.x + car.w - 8 * scale} ${car.y + car.h * 0.78}`} fill="none" stroke={color} strokeWidth={stroke} />
         </g>
       );
     }
 
     if (room.id === "pooja") {
       // ── Pooja Mandir Altar ──
-      const cx = rx + rw / 2;
-      const cy = ry + rh / 2;
+      const tW = 30 * scale;
+      const tH = 30 * scale;
+      const mandir = clampedRect(rx, ry, rw, rh, rw / 2 - tW / 2, rh / 2 - tH / 2, tW, tH, 4);
+
+      if (!mandir) return null;
+
+      const mcx = mandir.x + mandir.w / 2;
+      const mcy = mandir.y + mandir.h / 2;
+
       return (
         <g key={`furn-${room.id}`} className="pointer-events-none select-none">
           {/* concentric square bases */}
-          <rect x={cx - 15} y={cy - 15} width={30} height={30} rx={2} fill="none" stroke={color} strokeWidth={stroke} />
-          <rect x={cx - 10} y={cy - 10} width={20} height={20} rx={1} fill="none" stroke={color} strokeWidth={stroke} />
+          <rect x={mandir.x} y={mandir.y} width={mandir.w} height={mandir.h} rx={2 * scale} fill="none" stroke={color} strokeWidth={stroke} />
+          <rect x={mcx - 10 * scale} y={mcy - 10 * scale} width={20 * scale} height={20 * scale} rx={1 * scale} fill="none" stroke={color} strokeWidth={stroke} />
           {/* Oil lamp flame */}
-          <path d={`M ${cx} ${cy - 4} C ${cx - 3} ${cy} ${cx - 3} ${cy + 3} ${cx} ${cy + 5} C ${cx + 3} ${cy + 3} ${cx + 3} ${cy} ${cx} ${cy - 4} Z`} fill="none" stroke={color} strokeWidth={stroke} />
+          <path d={`M ${mcx} ${mcy - 4 * scale} C ${mcx - 3 * scale} ${mcy} ${mcx - 3 * scale} ${mcy + 3 * scale} ${mcx} ${mcy + 5 * scale} C ${mcx + 3 * scale} ${mcy + 3 * scale} ${mcx + 3 * scale} ${mcy} ${mcx} ${mcy - 4 * scale} Z`} fill="none" stroke={color} strokeWidth={stroke} />
         </g>
       );
     }
@@ -348,14 +454,20 @@ export default function FloorPlanCanvas({
     const rw = (room.width - leftOffset - rightOffset) * SC;
     const rh = (room.height - topOffset - bottomOffset) * SC;
 
+    const scale = furnitureScale(room.width, room.height);
     const color = "rgba(74, 85, 104, 0.25)";
     const stroke = 1.0;
     const elements: React.JSX.Element[] = [];
 
-    if (rh > rw) {
-      const steps = Math.floor(rh / 12);
-      const stepH = rh / steps;
-      for (let i = 1; i < steps; i++) {
+    const isVertical = rh > rw;
+    const len = isVertical ? rh : rw;
+    const treadSpacing = 10 * scale;
+    const treadCount = Math.floor((len - 8) / treadSpacing);
+    const clampedCount = Math.max(2, Math.min(treadCount, 12));
+
+    if (isVertical) {
+      const stepH = rh / (clampedCount + 1);
+      for (let i = 1; i <= clampedCount; i++) {
         const y = ry + i * stepH;
         elements.push(
           <line key={`stair-${i}`} x1={rx} y1={y} x2={rx + rw} y2={y} stroke={color} strokeWidth={stroke} />
@@ -365,19 +477,20 @@ export default function FloorPlanCanvas({
       elements.push(
         <line key="stair-mid" x1={midX} y1={ry + 10} x2={midX} y2={ry + rh - 10} stroke={color} strokeWidth={stroke} strokeDasharray="3,3" />
       );
-      const arrowY1 = ry + rh - 15;
-      const arrowY2 = ry + 15;
-      elements.push(
-        <g key="stair-arrow">
-          <circle cx={midX} cy={arrowY1} r={3} fill={color} />
-          <line x1={midX} y1={arrowY1} x2={midX} y2={arrowY2} stroke={color} strokeWidth={1.2} markerEnd="url(#arr-grey)" />
-          <text x={midX + 8} y={arrowY1} fill="rgba(74, 85, 104, 0.4)" fontSize={9} fontWeight="bold">UP</text>
-        </g>
-      );
+      if (rh >= 60) {
+        const arrowY1 = ry + rh - 15;
+        const arrowY2 = ry + 15;
+        elements.push(
+          <g key="stair-arrow">
+            <circle cx={midX} cy={arrowY1} r={3} fill={color} />
+            <line x1={midX} y1={arrowY1} x2={midX} y2={arrowY2} stroke={color} strokeWidth={1.2} markerEnd="url(#arr-grey)" />
+            <text x={midX + 8} y={arrowY1} fill="rgba(74, 85, 104, 0.4)" fontSize={9} fontWeight="bold">UP</text>
+          </g>
+        );
+      }
     } else {
-      const steps = Math.floor(rw / 12);
-      const stepW = rw / steps;
-      for (let i = 1; i < steps; i++) {
+      const stepW = rw / (clampedCount + 1);
+      for (let i = 1; i <= clampedCount; i++) {
         const x = rx + i * stepW;
         elements.push(
           <line key={`stair-${i}`} x1={x} y1={ry} x2={x} y2={ry + rh} stroke={color} strokeWidth={stroke} />
@@ -387,15 +500,17 @@ export default function FloorPlanCanvas({
       elements.push(
         <line key="stair-mid" x1={rx + 10} y1={midY} x2={rx + rw - 10} y2={midY} stroke={color} strokeWidth={stroke} strokeDasharray="3,3" />
       );
-      const arrowX1 = rx + 15;
-      const arrowX2 = rx + rw - 15;
-      elements.push(
-        <g key="stair-arrow">
-          <circle cx={arrowX1} cy={midY} r={3} fill={color} />
-          <line x1={arrowX1} y1={midY} x2={arrowX2} y2={midY} stroke={color} strokeWidth={1.2} markerEnd="url(#arr-grey)" />
-          <text x={arrowX1} y={midY - 8} fill="rgba(74, 85, 104, 0.4)" fontSize={9} fontWeight="bold">UP</text>
-        </g>
-      );
+      if (rw >= 60) {
+        const arrowX1 = rx + 15;
+        const arrowX2 = rx + rw - 15;
+        elements.push(
+          <g key="stair-arrow">
+            <circle cx={arrowX1} cy={midY} r={3} fill={color} />
+            <line x1={arrowX1} y1={midY} x2={arrowX2} y2={midY} stroke={color} strokeWidth={1.2} markerEnd="url(#arr-grey)" />
+            <text x={arrowX1} y={midY - 8} fill="rgba(74, 85, 104, 0.4)" fontSize={9} fontWeight="bold">UP</text>
+          </g>
+        );
+      }
     }
 
     return <g key={`stairs-${room.id}`}>{elements}</g>;
@@ -491,44 +606,136 @@ export default function FloorPlanCanvas({
     const dw = door.width * SC, pos = door.position * SC;
     const isMain = door.room === "living";
 
+    const { leftOffset, rightOffset, topOffset, bottomOffset } = getRoomOffsets(room);
+    const rx_inner = (room.x + leftOffset) * SC;
+    const ry_inner = (room.y + topOffset) * SC;
+    const rw_inner = (room.width - leftOffset - rightOffset) * SC;
+    const rh_inner = (room.height - topOffset - bottomOffset) * SC;
+
     let xh = 0, yh = 0, xc = 0, yc = 0, xo = 0, yo = 0, arc = "", panel = "";
     const color = isMain ? "#1D4ED8" : "#78350F"; // Royal Blue main door, Warm Amber other doors
     const strokeW = isMain ? 2.5 : 1.8;
 
+    const depth = (door.wall === "top" || door.wall === "bottom") ? rh_inner : rw_inner;
+
+    if (depth < dw) {
+      let x1 = 0, y1 = 0, x2 = 0, y2 = 0, cx = 0, cy = 0;
+      switch (door.wall) {
+        case "top":
+          x1 = rx + pos; y1 = ry;
+          x2 = rx + pos + dw; y2 = ry;
+          cx = rx + pos + dw / 2; cy = ry;
+          break;
+        case "bottom":
+          x1 = rx + pos; y1 = ry + rh;
+          x2 = rx + pos + dw; y2 = ry + rh;
+          cx = rx + pos + dw / 2; cy = ry + rh;
+          break;
+        case "left":
+          x1 = rx; y1 = ry + pos;
+          x2 = rx; y2 = ry + pos + dw;
+          cx = rx; cy = ry + pos + dw / 2;
+          break;
+        case "right":
+          x1 = rx + rw; y1 = ry + pos;
+          x2 = rx + rw; y2 = ry + pos + dw;
+          cx = rx + rw; cy = ry + pos + dw / 2;
+          break;
+      }
+      return (
+        <g key={`door-${idx}`}>
+          <line
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={color}
+            strokeWidth={1.5}
+            strokeDasharray="3,3"
+          />
+          <text
+            x={cx}
+            y={cy}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={color}
+            fontSize={12}
+            fontWeight="bold"
+          >
+            ↔
+          </text>
+        </g>
+      );
+    }
+
     switch (door.wall) {
       case "top":
-        xh = rx + pos; yh = ry;
-        xc = rx + pos + dw; yc = ry;
-        xo = xh; yo = yh + dw;
-        arc = `M ${xo} ${yo} A ${dw} ${dw} 0 0 0 ${xc} ${yc}`;
+        if (pos < (rw - dw) / 2) {
+          xh = rx + pos; yh = ry;
+          xc = rx + pos + dw; yc = ry;
+          xo = xh; yo = yh + dw;
+          arc = `M ${xo} ${yo} A ${dw} ${dw} 0 0 0 ${xc} ${yc}`;
+        } else {
+          xh = rx + pos + dw; yh = ry;
+          xc = rx + pos; yc = ry;
+          xo = xh; yo = yh + dw;
+          arc = `M ${xo} ${yo} A ${dw} ${dw} 0 0 1 ${xc} ${yc}`;
+        }
         panel = `M ${xh} ${yh} L ${xo} ${yo}`;
         break;
       case "bottom":
-        xh = rx + pos; yh = ry + rh;
-        xc = rx + pos + dw; yc = ry + rh;
-        xo = xh; yo = yh - dw;
-        arc = `M ${xo} ${yo} A ${dw} ${dw} 0 0 1 ${xc} ${yc}`;
+        if (pos < (rw - dw) / 2) {
+          xh = rx + pos; yh = ry + rh;
+          xc = rx + pos + dw; yc = ry + rh;
+          xo = xh; yo = yh - dw;
+          arc = `M ${xo} ${yo} A ${dw} ${dw} 0 0 1 ${xc} ${yc}`;
+        } else {
+          xh = rx + pos + dw; yh = ry + rh;
+          xc = rx + pos; yc = ry + rh;
+          xo = xh; yo = yh - dw;
+          arc = `M ${xo} ${yo} A ${dw} ${dw} 0 0 0 ${xc} ${yc}`;
+        }
         panel = `M ${xh} ${yh} L ${xo} ${yo}`;
         break;
       case "left":
-        xh = rx; yh = ry + pos;
-        xc = rx; yc = ry + pos + dw;
-        xo = xh + dw; yo = yh;
-        arc = `M ${xo} ${yo} A ${dw} ${dw} 0 0 1 ${xc} ${yc}`;
+        if (pos < (rh - dw) / 2) {
+          xh = rx; yh = ry + pos;
+          xc = rx; yc = ry + pos + dw;
+          xo = xh + dw; yo = yh;
+          arc = `M ${xo} ${yo} A ${dw} ${dw} 0 0 1 ${xc} ${yc}`;
+        } else {
+          xh = rx; yh = ry + pos + dw;
+          xc = rx; yc = ry + pos;
+          xo = xh + dw; yo = yh;
+          arc = `M ${xo} ${yo} A ${dw} ${dw} 0 0 0 ${xc} ${yc}`;
+        }
         panel = `M ${xh} ${yh} L ${xo} ${yo}`;
         break;
       case "right":
-        xh = rx + rw; yh = ry + pos;
-        xc = rx + rw; yc = ry + pos + dw;
-        xo = xh - dw; yo = yh;
-        arc = `M ${xo} ${yo} A ${dw} ${dw} 0 0 0 ${xc} ${yc}`;
+        if (pos < (rh - dw) / 2) {
+          xh = rx + rw; yh = ry + pos;
+          xc = rx + rw; yc = ry + pos + dw;
+          xo = xh - dw; yo = yh;
+          arc = `M ${xo} ${yo} A ${dw} ${dw} 0 0 0 ${xc} ${yc}`;
+        } else {
+          xh = rx + rw; yh = ry + pos + dw;
+          xc = rx + rw; yc = ry + pos;
+          xo = xh - dw; yo = yh;
+          arc = `M ${xo} ${yo} A ${dw} ${dw} 0 0 1 ${xc} ${yc}`;
+        }
         panel = `M ${xh} ${yh} L ${xo} ${yo}`;
         break;
     }
 
+    const clipId = `clip-${room.id}-${idx}`;
+
     return (
       <g key={`door-${idx}`}>
-        {/* Swing path */}
+        <defs>
+          <clipPath id={clipId}>
+            <rect x={rx_inner} y={ry_inner} width={rw_inner} height={rh_inner} />
+          </clipPath>
+        </defs>
         <path
           d={arc}
           fill="none"
@@ -536,8 +743,8 @@ export default function FloorPlanCanvas({
           strokeWidth={0.8}
           strokeDasharray="3,2"
           opacity={0.4}
+          clipPath={`url(#${clipId})`}
         />
-        {/* Door panel leaf */}
         <path
           d={panel}
           fill="none"
@@ -669,77 +876,90 @@ export default function FloorPlanCanvas({
                 {room.id === "staircase" && renderStaircase(room)}
 
                 {/* Text Labels centered inside room floor */}
-                {!isSmall ? (
-                  <>
-                    {/* Emoji Icon */}
-                    <text
-                      x={rx + rw / 2}
-                      y={ry + rh / 2 - 18}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fontSize={Math.min(48, Math.max(28, Math.min(rw, rh) * 0.2))}
-                      className="pointer-events-none select-none opacity-85"
-                    >
-                      {s.icon}
-                    </text>
-                    {/* Room Name */}
-                    <text
-                      x={rx + rw / 2}
-                      y={ry + rh / 2 + 14}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fill={s.labelColor}
-                      fontSize={Math.max(20, Math.min(36, Math.min(rw, rh) * 0.11))}
-                      fontWeight="700"
-                      className="pointer-events-none select-none"
-                      style={{ fontFamily: "Outfit, sans-serif" }}
-                    >
-                      {room.label}
-                    </text>
-                    {/* Dimensions */}
-                    <text
-                      x={rx + rw / 2}
-                      y={ry + rh / 2 + 32}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fill={s.labelColor}
-                      fontSize={Math.max(16, Math.min(28, Math.min(rw, rh) * 0.095))}
-                      fontWeight="500"
-                      className="pointer-events-none select-none opacity-70"
-                      style={{ fontFamily: "monospace" }}
-                    >
-                      {fmt(room.width)}′ × {fmt(room.height)}′
-                    </text>
-                  </>
-                ) : (
-                  // Small room minimalist layout: compact text, no icon
-                  <g className="pointer-events-none select-none">
-                    <text
-                      x={rx + rw / 2}
-                      y={ry + rh / 2 - 8}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fill={s.labelColor}
-                      fontSize={Math.max(16, Math.min(18, Math.min(rw, rh) * 0.18))}
-                      fontWeight="700"
-                      style={{ fontFamily: "Outfit, sans-serif" }}
-                    >
-                      {room.label.split(" ")[0]} {/* First word only for space */}
-                    </text>
-                    <text
-                      x={rx + rw / 2}
-                      y={ry + rh / 2 + 12}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fill={s.labelColor}
-                      fontSize={Math.max(13, Math.min(15, Math.min(rw, rh) * 0.13))}
-                      fontWeight="600"
-                      style={{ fontFamily: "monospace" }}
-                    >
-                      {fmt(room.width)}′×{fmt(room.height)}′
-                    </text>
-                  </g>
-                )}
+                {(() => {
+                  const availW = room.width * SC - 8;
+                  const labelX = rx + rw / 2;
+                  const labelY = ry + rh / 2;
+
+                  if (availW < 40) {
+                    return (
+                      <g className="pointer-events-none select-none">
+                        <text
+                          x={labelX}
+                          y={labelY}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fill={s.labelColor}
+                          fontSize={8}
+                          fontWeight="700"
+                          style={{ fontFamily: "Outfit, sans-serif" }}
+                        >
+                          {getRoomAbbreviation(room.id)}
+                        </text>
+                      </g>
+                    );
+                  } else if (availW <= 70) {
+                    return (
+                      <g className="pointer-events-none select-none">
+                        <text
+                          x={labelX}
+                          y={labelY}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fill={s.labelColor}
+                          fontSize={9}
+                          fontWeight="700"
+                          style={{ fontFamily: "Outfit, sans-serif" }}
+                        >
+                          {room.label}
+                        </text>
+                      </g>
+                    );
+                  } else {
+                    const showEmoji = room.height * SC > 80;
+                    return (
+                      <g className="pointer-events-none select-none">
+                        {showEmoji && (
+                          <text
+                            x={labelX}
+                            y={labelY - 14}
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                            fontSize={20}
+                            className="opacity-85"
+                          >
+                            {s.icon}
+                          </text>
+                        )}
+                        <text
+                          x={labelX}
+                          y={showEmoji ? labelY + 8 : labelY - 4}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fill={s.labelColor}
+                          fontSize={11}
+                          fontWeight="700"
+                          style={{ fontFamily: "Outfit, sans-serif" }}
+                        >
+                          {room.label}
+                        </text>
+                        <text
+                          x={labelX}
+                          y={showEmoji ? labelY + 22 : labelY + 10}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fill={s.labelColor}
+                          fontSize={8}
+                          fontWeight="500"
+                          className="opacity-70"
+                          style={{ fontFamily: "monospace" }}
+                        >
+                          {fmt(room.width)}′ × {fmt(room.height)}′
+                        </text>
+                      </g>
+                    );
+                  }
+                })()}
               </g>
             );
           })}
