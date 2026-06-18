@@ -134,19 +134,17 @@ export default function FloorPlanCanvas({
   const livingRoom = rooms.find((r) => r.id === "living");
 
   function gateCenter(): { x: number; y: number } {
-    const ref = parkingRoom || livingRoom;
-    if (!ref) return { x: W / 2, y: H / 2 };
-    if (roadFacing === "North") return { x: ref.x + ref.width / 2, y: 0 };
-    if (roadFacing === "South") return { x: ref.x + ref.width / 2, y: H };
-    if (roadFacing === "West") return { x: 0, y: ref.y + ref.height / 2 };
-    if (roadFacing === "East") return { x: W, y: ref.y + ref.height / 2 };
+    // Gate is always at the center of the road-facing plot boundary edge
+    if (roadFacing === "North") return { x: W / 2, y: 0 };
+    if (roadFacing === "South") return { x: W / 2, y: H };
+    if (roadFacing === "West") return { x: 0, y: H / 2 };
+    if (roadFacing === "East") return { x: W, y: H / 2 };
     return { x: W / 2, y: 0 };
   }
 
   function mainDoorPoint(): { x: number; y: number } | null {
-    if (!livingRoom) return null;
     const door = doors.find((d) => d.room === "living");
-    if (!door) return null;
+    if (!door || !livingRoom) return null;
     const pos = door.position + door.width / 2;
     switch (door.wall) {
       case "top":
@@ -1049,8 +1047,9 @@ export default function FloorPlanCanvas({
               points={buildEntryPath()}
               fill="none"
               stroke="#16A34A"
-              strokeWidth={3}
-              strokeDasharray="8,4"
+              strokeWidth={1.5}
+              strokeDasharray="6,4"
+              strokeOpacity={0.55}
               markerEnd="url(#arr-green)"
               opacity={0.8}
             />

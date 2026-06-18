@@ -54,6 +54,11 @@ export default function InputForm({ onSubmit, isLoading, lockedEngine }: InputFo
   const applyPreset = (w: number, h: number) => {
     setLengthFt(w);
     setBreadthFt(h);
+    const area = w * h;
+    if (area < 800) setBedrooms(1);
+    else if (area < 1400) setBedrooms(2);
+    else if (area < 2000) setBedrooms(3);
+    else setBedrooms(3);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -90,16 +95,23 @@ export default function InputForm({ onSubmit, isLoading, lockedEngine }: InputFo
       <div className="flex flex-col gap-2">
         <label className="text-xs font-semibold text-[#2c3539] uppercase tracking-wider">Indian Plot Presets (ft)</label>
         <div className="grid grid-cols-2 gap-2">
-          {presets.map((p, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => applyPreset(p.w, p.h)}
-              className="px-3 py-2 text-xs border border-[#e0dbcd] hover:border-[#2c3539] hover:bg-[#fdfbf7] rounded-xl font-medium transition-all text-[#2c3539]"
-            >
-              {p.label}
-            </button>
-          ))}
+          {presets.map((p, idx) => {
+            const isActive = p.w === lengthFt && p.h === breadthFt;
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => applyPreset(p.w, p.h)}
+                className={`px-3 py-2 text-xs border rounded-xl font-medium transition-all ${
+                  isActive 
+                    ? "bg-[#2c3539] text-white border-[#2c3539]" 
+                    : "border-[#e0dbcd] hover:border-[#2c3539] hover:bg-[#fdfbf7] text-[#2c3539]"
+                }`}
+              >
+                {p.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -225,6 +237,11 @@ export default function InputForm({ onSubmit, isLoading, lockedEngine }: InputFo
         {lockedEngine && (
           <p className="text-[10px] text-stone-500 leading-normal">
             Design engine is locked to <strong>{lockedEngine === "ai" ? "Gemini AI" : "Instant Rules"}</strong> for this multi-floor project.
+          </p>
+        )}
+        {lockedEngine && (
+          <p className="text-[10px] text-amber-600 font-medium mt-1">
+            ⚠️ Engine locked to {lockedEngine === "ai" ? "Gemini AI" : "Instant Rules"} for this session. Regenerate to change.
           </p>
         )}
         {!lockedEngine && engine === "ai" && (
@@ -446,6 +463,18 @@ export default function InputForm({ onSubmit, isLoading, lockedEngine }: InputFo
           </>
         )}
       </button>
+
+      <div className="flex justify-center gap-4 mt-1">
+        {[
+          { icon: "⚡", label: "Instant" },
+          { icon: "📐", label: "Proportional" },
+          { icon: "🕉️", label: "Vastu-ready" },
+        ].map((badge) => (
+          <span key={badge.label} className="flex items-center gap-1 text-[10px] text-[#8892b0] font-medium">
+            {badge.icon} {badge.label}
+          </span>
+        ))}
+      </div>
     </form>
   );
 }

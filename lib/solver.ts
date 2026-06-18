@@ -334,11 +334,42 @@ export function generateDoorsAndWindows(
 
     // ─── DOOR PLACEMENT ───
     if (isLiving) {
-      // 1. Main door facing road
       let mainWall: "top" | "bottom" | "left" | "right" = "top";
-      if (roadFacing === "South") mainWall = "bottom";
-      else if (roadFacing === "East") mainWall = "right";
-      else if (roadFacing === "West") mainWall = "left";
+      // Find which wall of the living room is closest to the road-facing 
+      // plot boundary
+      const distTop = Math.abs(room.y - 0);  
+      const distBottom = Math.abs((room.y + room.height) - plotBreadth);
+      const distLeft = Math.abs(room.x - 0);
+      const distRight = Math.abs((room.x + room.width) - plotLength);
+      
+      const wallDistances: Record<string, number> = {
+        top: distTop,
+        bottom: distBottom, 
+        left: distLeft,
+        right: distRight
+      };
+      
+      // Road facing direction maps to which plot edge is "near" (smallest dist)
+      // North road = top edge (y=0), South road = bottom edge, etc.
+      // The living room wall CLOSEST to the road edge gets the main door.
+      const roadEdgeDist: Record<string, string> = {
+        North: "top",
+        South: "bottom", 
+        East: "right",
+        West: "left"
+      };
+      const preferredWall = roadEdgeDist[roadFacing] as "top"|"bottom"|"left"|"right";
+      
+      // Use preferred wall if living room is within 5ft of that edge
+      // Otherwise use the wall with minimum distance to plot boundary
+      if (wallDistances[preferredWall] <= 5.0) {
+        mainWall = preferredWall;
+      } else {
+        // Living room is far from road edge — pick the wall closest to 
+        // the road-facing plot boundary
+        mainWall = (Object.entries(wallDistances)
+          .sort(([,a],[,b]) => a - b)[0][0]) as "top"|"bottom"|"left"|"right";
+      }
 
       const mainDoorWidth = 3.5;
       const span = mainWall === "top" || mainWall === "bottom" ? room.width : room.height;

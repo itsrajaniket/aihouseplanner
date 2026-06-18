@@ -40,10 +40,10 @@ function checkGeometry(
       if (frontH < 11.7) return false;
       return true;
     } else {
-      const backH = Math.max(12.2, snap(uH * 0.35));
-      const frontH = hasParking ? 26.4 : hasGarden ? 18.2 : Math.max(10.2, snap(uH * 0.30));
-      const middleH = uH - backH - frontH;
-      if (middleH < 9.7) return false;
+      const backH = Math.max(12.2, snap(uH * 0.33));
+      const middleH = Math.max(10.2, snap(uH * 0.30));
+      const frontH = uH - backH - middleH;
+      if (frontH < 9.0) return false;
       return true;
     }
   }
@@ -467,20 +467,22 @@ export function generateLocalLayout(inputs: PlotInputs): FloorPlan {
 
         let frontRowRight: LayoutNode;
         if (activeParking) {
+          const staircaseH = Math.min(9.0, Math.max(8.0, frontH * 0.38));
           frontRowRight = {
             type: "split",
             direction: "vertical",
-            ratio: 8.2 / frontH, // Staircase height = 8.0 ft
+            ratio: staircaseH / frontH, // Staircase height = 8.0 ft
             children: [
               { type: "room", id: "staircase", label: "Staircase" },
               { type: "room", id: "parking", label: "Car Parking" },
             ],
           };
         } else if (activeGarden) {
+          const staircaseH = Math.min(9.0, Math.max(8.0, frontH * 0.38));
           frontRowRight = {
             type: "split",
             direction: "vertical",
-            ratio: 8.2 / frontH,
+            ratio: staircaseH / frontH,
             children: [
               { type: "room", id: "staircase", label: "Staircase" },
               { type: "room", id: "garden", label: "Garden / Lawn" },
@@ -490,10 +492,11 @@ export function generateLocalLayout(inputs: PlotInputs): FloorPlan {
           frontRowRight = { type: "room", id: "staircase", label: "Staircase" };
         }
 
+        const staircaseColW = Math.min(6.0, Math.max(4.5, uW * 0.20));
         const frontRow: LayoutNode = {
           type: "split",
           direction: "horizontal",
-          ratio: (uW - 10) / uW, // Staircase column width = 10 ft
+          ratio: (uW - staircaseColW) / uW, // Staircase column width
           children: [{ type: "room", id: "living", label: "Living Room" }, frontRowRight],
         };
 
@@ -505,6 +508,11 @@ export function generateLocalLayout(inputs: PlotInputs): FloorPlan {
         };
       } else {
         // 3-Row Layout: Back Row, Middle Row, Front Row
+        const backH = Math.max(12.2, snap(uH * 0.33));
+        const middleH = Math.max(10.2, snap(uH * 0.30));
+        const frontH = uH - backH - middleH;
+        if (frontH < 9.0) throw new Error("Plot too shallow for 3-row layout");
+
         let backRowLeft: LayoutNode;
         if (activeBathrooms >= 2) {
           backRowLeft = {
@@ -567,20 +575,22 @@ export function generateLocalLayout(inputs: PlotInputs): FloorPlan {
 
       let frontRowRight: LayoutNode = { type: "room", id: "staircase", label: "Staircase" };
       if (activeParking) {
+        const staircaseH = Math.min(9.0, Math.max(8.0, frontH * 0.38));
         frontRowRight = {
           type: "split",
           direction: "vertical",
-          ratio: 8.2 / 26.4, // Staircase height = 8.0 ft, Parking height = 18.0 ft
+          ratio: staircaseH / frontH,
           children: [
             { type: "room", id: "staircase", label: "Staircase" },
             { type: "room", id: "parking", label: "Car Parking" },
           ],
         };
       } else if (activeGarden) {
+        const staircaseH = Math.min(9.0, Math.max(8.0, frontH * 0.38));
         frontRowRight = {
           type: "split",
           direction: "vertical",
-          ratio: 8.2 / 18.2,
+          ratio: staircaseH / frontH,
           children: [
             { type: "room", id: "staircase", label: "Staircase" },
             { type: "room", id: "garden", label: "Garden / Lawn" },
@@ -588,16 +598,13 @@ export function generateLocalLayout(inputs: PlotInputs): FloorPlan {
         };
       }
 
+      const staircaseColW = Math.min(6.0, Math.max(4.5, uW * 0.20));
       const frontRow: LayoutNode = {
         type: "split",
         direction: "horizontal",
-        ratio: (uW - 10) / uW, // Right column is 10 ft wide
+        ratio: (uW - staircaseColW) / uW, // Right column
         children: [{ type: "room", id: "living", label: "Living Room" }, frontRowRight],
       };
-
-      const backH = Math.max(12.2, snap(uH * 0.35));
-      const frontH = activeParking ? 26.4 : activeGarden ? 18.2 : Math.max(10.2, snap(uH * 0.30));
-      const middleH = uH - backH - frontH;
 
       rootNode = {
         type: "split",
@@ -618,6 +625,38 @@ export function generateLocalLayout(inputs: PlotInputs): FloorPlan {
 
   // ─── SOLVE COORDINATES ───
   const rooms = solveLayout(rootNode, S, S, uW, uH, 0.4);
+
+  // Determine if we need to flip the layout to match road facing direction
+  // The BSP tree always puts front zone at bottom (high Y) and back at top (low Y)
+  // "Front" should face the road.
+  const shouldFlipVertically = (roadFacing as string) === "North" || (roadFacing as string) === "Northeast" || (roadFacing as string) === "Northwest";
+  const shouldFlipHorizontally = roadFacing === "East";
+
+  if (shouldFlipVertically) {
+    // Mirror all room Y coordinates: newY = (S + uH) - (room.y - S) - room.height
+    // Which simplifies to: newY = S + uH + S - room.y - room.height
+    //                            = (2*S + uH) - room.y - room.height
+    const totalH = 2 * S + uH;
+    rooms.forEach(room => {
+      room.y = totalH - room.y - room.height;
+    });
+  }
+
+  if (shouldFlipHorizontally) {
+    const totalW = 2 * S + uW;
+    rooms.forEach(room => {
+      room.x = totalW - room.x - room.width;
+    });
+  }
+
+  // West facing: flip horizontally in opposite direction
+  if (roadFacing === "West") {
+    // Living room column (right side of BSP) should become left side
+    const totalW = 2 * S + uW;
+    rooms.forEach(room => {
+      room.x = totalW - room.x - room.width;
+    });
+  }
 
   // Sanity Check: Ensure no main room width or height is less than 4 ft
   const hasTinyRoom = rooms.some(
