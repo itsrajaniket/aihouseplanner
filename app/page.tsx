@@ -185,18 +185,18 @@ export default function Home() {
   return (
     <div className="flex-1 lg:h-screen bg-[#fcfbf7] text-[#2c3539] flex flex-col font-sans lg:overflow-hidden">
       {/* Top Banner Navigation */}
-      <header className="border-b border-[#e0dbcd] bg-white shadow-xs">
-        <div className="max-w-[1440px] mx-auto w-full py-4 px-6 md:px-12 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="bg-[#2c3539] p-2 rounded-xl text-[#fdfbf7]">
-              <HardHat className="w-5 h-5" />
+      <header className="border-b border-[#e0dbcd] bg-white shadow-xs z-20">
+        <div className="max-w-[1440px] mx-auto w-full py-1.5 px-6 md:px-12 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <div className="bg-[#2c3539] p-1 rounded-md text-[#fdfbf7]">
+              <HardHat className="w-4 h-4" />
             </div>
             <div>
-              <h1 className="font-extrabold text-lg md:text-xl font-outfit tracking-tight text-[#2c3539] flex items-center gap-2">
+              <h1 className="font-extrabold text-sm md:text-base font-outfit tracking-tight text-[#2c3539] flex items-center gap-1.5">
                 AI House Map Planner
-                <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-sm">V1</span>
+                <span className="text-[9px] bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded-sm font-bold uppercase tracking-wider shadow-sm">V1</span>
               </h1>
-              <p className="text-[10px] md:text-xs text-[#8892b0] font-medium mt-0.5">Instant Architectural Blueprint Visualizer</p>
+              <p className="text-[9px] md:text-[10px] text-[#8892b0] font-medium leading-none mt-0.5">Instant Architectural Blueprint Visualizer</p>
             </div>
           </div>
           
@@ -212,8 +212,9 @@ export default function Home() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col lg:flex-row gap-6 p-4 md:p-6 lg:p-6 max-w-[1440px] mx-auto w-full lg:min-h-0 lg:overflow-hidden">
-        {/* Left Side: Form */}
+      <div className="flex-1 relative lg:min-h-0 lg:overflow-hidden flex justify-center w-full">
+        <main className="lg:absolute lg:inset-0 flex flex-col lg:flex-row gap-6 p-4 md:p-6 lg:p-6 max-w-[1440px] mx-auto w-full">
+          {/* Left Side: Form */}
         <section className="w-full lg:w-[380px] xl:w-[420px] shrink-0 lg:overflow-y-auto lg:pr-2 pb-4 lg:pb-0 custom-scrollbar lg:min-h-0">
           <InputForm onSubmit={handleGenerate} isLoading={isLoading} lockedEngine={lockedEngine} />
         </section>
@@ -284,17 +285,8 @@ export default function Home() {
             </div>
           )}
         </section>
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-[#e0dbcd] bg-white py-6 px-6 text-center text-xs text-[#8892b0] mt-auto">
-        <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 px-0 md:px-6">
-          <p className="font-medium">© {new Date().getFullYear()} AI House Map Planner. Built for Indian individual plot owners.</p>
-          <p className="flex items-center gap-1.5 justify-center bg-[#fcfbf7] px-3 py-1.5 rounded-lg border border-[#eeeada]">
-            <HelpCircle className="w-3.5 h-3.5 text-amber-500" /> Purely for visualization. Not for immediate structural construction.
-          </p>
-        </div>
-      </footer>
+        </main>
+      </div>
     </div>
   );
 }
