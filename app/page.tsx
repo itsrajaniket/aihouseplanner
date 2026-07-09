@@ -183,41 +183,43 @@ export default function Home() {
   const layout = floors[activeFloor];
 
   return (
-    <div className="flex-1 bg-[#fcfbf7] text-[#2c3539] flex flex-col font-sans">
+    <div className="flex-1 lg:h-screen bg-[#fcfbf7] text-[#2c3539] flex flex-col font-sans lg:overflow-hidden">
       {/* Top Banner Navigation */}
-      <header className="border-b border-[#e0dbcd] bg-white py-4 px-6 md:px-12 flex justify-between items-center shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="bg-[#2c3539] p-2 rounded-xl text-[#fdfbf7]">
-            <HardHat className="w-5 h-5" />
+      <header className="border-b border-[#e0dbcd] bg-white shadow-xs">
+        <div className="max-w-[1440px] mx-auto w-full py-4 px-6 md:px-12 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="bg-[#2c3539] p-2 rounded-xl text-[#fdfbf7]">
+              <HardHat className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="font-extrabold text-lg md:text-xl font-outfit tracking-tight text-[#2c3539] flex items-center gap-2">
+                AI House Map Planner
+                <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-sm">V1</span>
+              </h1>
+              <p className="text-[10px] md:text-xs text-[#8892b0] font-medium mt-0.5">Instant Architectural Blueprint Visualizer</p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-extrabold text-lg md:text-xl font-outfit tracking-tight text-[#2c3539] flex items-center gap-1.5">
-              AI House Map Planner
-              <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full font-bold">V1</span>
-            </h1>
-            <p className="text-[10px] md:text-xs text-[#8892b0]">Instant Architectural Blueprint Visualizer</p>
+          
+          <div className="flex items-center gap-4 text-xs font-semibold text-[#8892b0] hidden sm:flex">
+            <span className="flex items-center gap-1.5 bg-[#fcfbf7] px-2.5 py-1 rounded-md border border-[#eeeada]">
+              <Compass className="w-3.5 h-3.5 text-[#2c3539]" /> Proportional Drafts
+            </span>
+            <span className="flex items-center gap-1.5 bg-[#fcfbf7] px-2.5 py-1 rounded-md border border-[#eeeada]">
+              <span className="text-[#2c3539]">🌿</span> Vastu Compliant Options
+            </span>
           </div>
-        </div>
-        
-        <div className="flex items-center gap-4 text-xs font-semibold text-[#8892b0] hidden sm:flex">
-          <span className="flex items-center gap-1">
-            <Compass className="w-3.5 h-3.5" /> Proportional Drafts
-          </span>
-          <span className="flex items-center gap-1">
-            🌿 Vastu Compliant Options
-          </span>
         </div>
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-4 md:p-6 lg:p-6 max-w-[1440px] mx-auto w-full">
-        {/* Left Side: Form (4 cols on large screens) */}
-        <section className="lg:col-span-4 h-fit">
+      <main className="flex-1 flex flex-col lg:flex-row gap-6 p-4 md:p-6 lg:p-6 max-w-[1440px] mx-auto w-full lg:min-h-0 lg:overflow-hidden">
+        {/* Left Side: Form */}
+        <section className="w-full lg:w-[380px] xl:w-[420px] shrink-0 lg:h-full lg:overflow-y-auto lg:pr-2 pb-4 lg:pb-0 custom-scrollbar lg:min-h-0">
           <InputForm onSubmit={handleGenerate} isLoading={isLoading} lockedEngine={lockedEngine} />
         </section>
 
-        {/* Right Side: Visual SVG & Metadata (8 cols on large screens) */}
-        <section className="lg:col-span-8 flex flex-col gap-4 h-full">
+        {/* Right Side: Visual SVG & Metadata */}
+        <section className="flex-1 flex flex-col gap-4 lg:h-full lg:min-h-0 lg:overflow-hidden">
           {layout ? (
             <>
               {/* Generation Indicator Badge */}
@@ -255,7 +257,7 @@ export default function Home() {
               )}
 
               {/* Main SVG Floor Plan */}
-              <div className="flex-1">
+              <div className="flex-1 lg:min-h-0 flex flex-col">
                 <FloorPlanCanvas
                   layout={layout}
                   orientation={inputs.orientation}
@@ -265,24 +267,33 @@ export default function Home() {
               </div>
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center bg-white border border-dashed border-[#e0dbcd] rounded-2xl p-12 text-center">
-              <svg className="animate-spin h-8 w-8 text-[#2c3539] mb-4" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <h3 className="font-bold text-[#2c3539] font-outfit">Preparing Canvas</h3>
-              <p className="text-xs text-[#8892b0] mt-1">Sizing grid paper and configuring layouts...</p>
+            <div 
+              className="flex-1 flex flex-col items-center justify-center bg-[#fdfbf7] border border-[#e0dbcd] rounded-2xl p-12 text-center overflow-hidden relative shadow-inner"
+              style={{
+                backgroundImage: 'radial-gradient(#d5d1c3 1px, transparent 1px)',
+                backgroundSize: '24px 24px'
+              }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
+              <div className="bg-white/90 p-6 rounded-2xl backdrop-blur-sm border border-[#e0dbcd] shadow-sm flex flex-col items-center relative z-10">
+                <svg className="animate-spin h-8 w-8 text-[#2c3539] mb-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <h3 className="font-bold text-[#2c3539] font-outfit text-lg">Preparing Canvas</h3>
+                <p className="text-xs text-[#8892b0] mt-1 max-w-[200px]">Sizing grid paper and configuring layouts...</p>
+              </div>
             </div>
           )}
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#e0dbcd] bg-white py-4 px-6 text-center text-xs text-[#8892b0]">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p>© {new Date().getFullYear()} AI House Map Planner. Built for Indian individual plot owners.</p>
-          <p className="flex items-center gap-1 justify-center">
-            <HelpCircle className="w-3.5 h-3.5" /> Purely for visualization. Not for immediate structural construction.
+      <footer className="border-t border-[#e0dbcd] bg-white py-6 px-6 text-center text-xs text-[#8892b0] mt-auto">
+        <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 px-0 md:px-6">
+          <p className="font-medium">© {new Date().getFullYear()} AI House Map Planner. Built for Indian individual plot owners.</p>
+          <p className="flex items-center gap-1.5 justify-center bg-[#fcfbf7] px-3 py-1.5 rounded-lg border border-[#eeeada]">
+            <HelpCircle className="w-3.5 h-3.5 text-amber-500" /> Purely for visualization. Not for immediate structural construction.
           </p>
         </div>
       </footer>

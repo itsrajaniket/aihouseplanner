@@ -1260,7 +1260,7 @@ export default function FloorPlanCanvas({
   };
 
   return (
-    <div className="flex flex-col bg-white rounded-2xl border border-[#E0DBCD] shadow-sm overflow-hidden h-[740px] md:h-[820px] lg:h-[880px] min-h-[640px]">
+    <div className="flex flex-col bg-white rounded-2xl border border-[#E0DBCD] shadow-sm overflow-hidden h-[60vh] min-h-[400px] lg:h-full lg:min-h-0 w-full">
       {/* ── Header Toolbar ───────────────────────────────────────────────── */}
       <div className="flex flex-wrap justify-between items-center gap-3 bg-[#FAFAF6] border-b border-[#E0DBCD] px-5 py-3.5 z-10 shrink-0">
         <div className="flex items-center gap-2">
@@ -1317,7 +1317,7 @@ export default function FloorPlanCanvas({
         <svg
           ref={svgRef}
           viewBox={`0 0 ${viewW} ${viewH}`}
-          className="w-full h-full drop-shadow-md select-none"
+          className="max-w-full max-h-full drop-shadow-md select-none"
         >
           {renderSVGContent()}
         </svg>

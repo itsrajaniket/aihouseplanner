@@ -94,7 +94,7 @@ export default function InputForm({ onSubmit, isLoading, lockedEngine }: InputFo
       {/* Preset Site Sizes */}
       <div className="flex flex-col gap-2">
         <label className="text-xs font-semibold text-[#2c3539] uppercase tracking-wider">Indian Plot Presets (ft)</label>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="flex flex-wrap gap-2">
           {presets.map((p, idx) => {
             const isActive = p.w === lengthFt && p.h === breadthFt;
             return (
@@ -102,10 +102,10 @@ export default function InputForm({ onSubmit, isLoading, lockedEngine }: InputFo
                 key={idx}
                 type="button"
                 onClick={() => applyPreset(p.w, p.h)}
-                className={`px-3 py-2 text-xs border rounded-xl font-medium transition-all ${
+                className={`px-3 py-2 text-xs border rounded-xl font-medium transition-all flex-1 min-w-[100px] ${
                   isActive 
-                    ? "bg-[#2c3539] text-white border-[#2c3539]" 
-                    : "border-[#e0dbcd] hover:border-[#2c3539] hover:bg-[#fdfbf7] text-[#2c3539]"
+                    ? "bg-[#2c3539] text-white border-[#2c3539] shadow-sm" 
+                    : "border-[#e0dbcd] bg-[#fcfbf7] hover:border-[#2c3539] hover:bg-white text-[#2c3539]"
                 }`}
               >
                 {p.label}
@@ -120,14 +120,14 @@ export default function InputForm({ onSubmit, isLoading, lockedEngine }: InputFo
         {/* Width Slider / Input */}
         <div className="flex flex-col gap-1.5">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-semibold text-[#2c3539]">Plot Width (Feet)</span>
+            <span className="text-sm font-semibold text-[#2c3539]">Plot Width <span className="text-stone-400 font-normal text-xs ml-1">(ft)</span></span>
             <input
               type="number"
               min={15}
               max={100}
               value={lengthFt}
               onChange={(e) => setLengthFt(Math.max(15, Math.min(100, Number(e.target.value))))}
-              className="w-16 text-right font-mono text-sm font-bold border-b border-[#e0dbcd] focus:border-[#2c3539] outline-none text-[#2c3539]"
+              className="w-20 text-right font-mono text-sm font-bold border border-[#e0dbcd] rounded-lg px-2 py-1.5 focus:border-[#2c3539] focus:ring-1 focus:ring-[#2c3539] outline-none text-[#2c3539] bg-white transition-all shadow-sm"
             />
           </div>
           <input
@@ -143,14 +143,14 @@ export default function InputForm({ onSubmit, isLoading, lockedEngine }: InputFo
         {/* Height Slider / Input */}
         <div className="flex flex-col gap-1.5">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-semibold text-[#2c3539]">Plot Depth (Feet)</span>
+            <span className="text-sm font-semibold text-[#2c3539]">Plot Depth <span className="text-stone-400 font-normal text-xs ml-1">(ft)</span></span>
             <input
               type="number"
               min={15}
               max={100}
               value={breadthFt}
               onChange={(e) => setBreadthFt(Math.max(15, Math.min(100, Number(e.target.value))))}
-              className="w-16 text-right font-mono text-sm font-bold border-b border-[#e0dbcd] focus:border-[#2c3539] outline-none text-[#2c3539]"
+              className="w-20 text-right font-mono text-sm font-bold border border-[#e0dbcd] rounded-lg px-2 py-1.5 focus:border-[#2c3539] focus:ring-1 focus:ring-[#2c3539] outline-none text-[#2c3539] bg-white transition-all shadow-sm"
             />
           </div>
           <input
@@ -165,37 +165,45 @@ export default function InputForm({ onSubmit, isLoading, lockedEngine }: InputFo
       </div>
 
       {/* Orientation & Road Access Side */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-2">
           <label className="text-xs font-semibold text-[#2c3539] uppercase tracking-wider">Plot Orientation</label>
-          <select
-            value={orientation}
-            onChange={(e) => setOrientation(e.target.value)}
-            className="w-full bg-[#fcfbf7] border border-[#e0dbcd] rounded-xl px-3 py-2 text-xs font-medium text-[#2c3539] outline-none focus:border-[#2c3539] cursor-pointer"
-          >
-            <option value="North">North Facing</option>
-            <option value="East">East Facing</option>
-            <option value="South">South Facing</option>
-            <option value="West">West Facing</option>
-            <option value="Northeast">Northeast Facing</option>
-            <option value="Southeast">Southeast Facing</option>
-            <option value="Southwest">Southwest Facing</option>
-            <option value="Northwest">Northwest Facing</option>
-          </select>
+          <div className="grid grid-cols-4 gap-1.5 bg-[#fcfbf7] p-1.5 rounded-xl border border-[#e0dbcd]">
+            {["North", "East", "South", "West", "Northeast", "Southeast", "Southwest", "Northwest"].map((dir) => (
+              <button
+                key={dir}
+                type="button"
+                onClick={() => setOrientation(dir)}
+                className={`py-1.5 text-[10px] sm:text-xs font-bold rounded-lg transition-all ${
+                  orientation === dir 
+                    ? "bg-[#2c3539] text-white shadow-sm" 
+                    : "text-[#8892b0] hover:text-[#2c3539] hover:bg-white"
+                }`}
+              >
+                {dir.replace("east", "E").replace("west", "W")}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <label className="text-xs font-semibold text-[#2c3539] uppercase tracking-wider">Road Access Side</label>
-          <select
-            value={roadFacing}
-            onChange={(e) => setRoadFacing(e.target.value)}
-            className="w-full bg-[#fcfbf7] border border-[#e0dbcd] rounded-xl px-3 py-2 text-xs font-medium text-[#2c3539] outline-none focus:border-[#2c3539] cursor-pointer"
-          >
-            <option value="North">North Side</option>
-            <option value="East">East Side</option>
-            <option value="South">South Side</option>
-            <option value="West">West Side</option>
-          </select>
+          <div className="grid grid-cols-4 gap-1.5 bg-[#fcfbf7] p-1.5 rounded-xl border border-[#e0dbcd]">
+            {["North", "East", "South", "West"].map((side) => (
+              <button
+                key={side}
+                type="button"
+                onClick={() => setRoadFacing(side)}
+                className={`py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  roadFacing === side 
+                    ? "bg-[#2c3539] text-white shadow-sm" 
+                    : "text-[#8892b0] hover:text-[#2c3539] hover:bg-white"
+                }`}
+              >
+                {side}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -256,7 +264,7 @@ export default function InputForm({ onSubmit, isLoading, lockedEngine }: InputFo
         <button
           type="button"
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="flex justify-between items-center w-full text-left font-semibold text-sm text-[#2c3539] font-outfit"
+          className="flex justify-between items-center w-full text-left font-semibold text-sm text-[#2c3539] font-outfit px-3 py-2 -mx-3 rounded-lg hover:bg-[#fdfbf7] transition-colors"
         >
           <span className="flex items-center gap-1.5">
             <Sliders className="w-4 h-4 text-[#8892b0]" />
@@ -446,7 +454,7 @@ export default function InputForm({ onSubmit, isLoading, lockedEngine }: InputFo
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full mt-auto py-3 bg-[#2c3539] hover:bg-[#1a2022] text-[#fdfbf7] font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-95 disabled:opacity-50"
+        className="w-full mt-auto py-3.5 bg-[#2c3539] hover:bg-[#1a2022] text-[#fdfbf7] font-bold rounded-xl text-base flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-95 disabled:opacity-50"
       >
         {isLoading ? (
           <>
@@ -458,20 +466,20 @@ export default function InputForm({ onSubmit, isLoading, lockedEngine }: InputFo
           </>
         ) : (
           <>
-            <Sparkles className="w-4 h-4 text-amber-300" />
-            Generate Design Plan 🪄
+            <Sparkles className="w-5 h-5 text-amber-300" />
+            Generate Design Plan
           </>
         )}
       </button>
 
-      <div className="flex justify-center gap-4 mt-1">
+      <div className="flex justify-center gap-2 mt-1">
         {[
           { icon: "⚡", label: "Instant" },
           { icon: "📐", label: "Proportional" },
           { icon: "🕉️", label: "Vastu-ready" },
         ].map((badge) => (
-          <span key={badge.label} className="flex items-center gap-1 text-[10px] text-[#8892b0] font-medium">
-            {badge.icon} {badge.label}
+          <span key={badge.label} className="flex items-center gap-1.5 px-2.5 py-1 bg-[#fcfbf7] border border-[#eeeada] rounded-full text-[10px] text-[#4c566a] font-bold shadow-sm">
+            <span>{badge.icon}</span> {badge.label}
           </span>
         ))}
       </div>
