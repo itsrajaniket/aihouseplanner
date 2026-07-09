@@ -214,12 +214,12 @@ export default function Home() {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col lg:flex-row gap-6 p-4 md:p-6 lg:p-6 max-w-[1440px] mx-auto w-full lg:min-h-0 lg:overflow-hidden">
         {/* Left Side: Form */}
-        <section className="w-full lg:w-[380px] xl:w-[420px] shrink-0 lg:h-full lg:overflow-y-auto lg:pr-2 pb-4 lg:pb-0 custom-scrollbar lg:min-h-0">
+        <section className="w-full lg:w-[380px] xl:w-[420px] shrink-0 lg:overflow-y-auto lg:pr-2 pb-4 lg:pb-0 custom-scrollbar lg:min-h-0">
           <InputForm onSubmit={handleGenerate} isLoading={isLoading} lockedEngine={lockedEngine} />
         </section>
 
         {/* Right Side: Visual SVG & Metadata */}
-        <section className="flex-1 flex flex-col gap-4 lg:h-full lg:min-h-0 lg:overflow-hidden">
+        <section className="flex-1 flex flex-col gap-4 lg:min-h-0 lg:overflow-hidden">
           {layout ? (
             <>
               {/* Generation Indicator Badge */}
@@ -257,14 +257,12 @@ export default function Home() {
               )}
 
               {/* Main SVG Floor Plan */}
-              <div className="flex-1 lg:min-h-0 flex flex-col">
-                <FloorPlanCanvas
-                  layout={layout}
-                  orientation={inputs.orientation}
-                  roadFacing={inputs.roadFacing}
-                  activeFloor={activeFloor}
-                />
-              </div>
+              <FloorPlanCanvas
+                layout={layout}
+                orientation={inputs.orientation}
+                roadFacing={inputs.roadFacing}
+                activeFloor={activeFloor}
+              />
             </>
           ) : (
             <div 

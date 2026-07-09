@@ -1260,7 +1260,7 @@ export default function FloorPlanCanvas({
   };
 
   return (
-    <div className="flex flex-col bg-white rounded-2xl border border-[#E0DBCD] shadow-sm overflow-hidden h-[60vh] min-h-[400px] lg:h-full lg:min-h-0 w-full">
+    <div className="flex flex-col bg-white rounded-2xl border border-[#E0DBCD] shadow-sm overflow-hidden flex-1 min-h-[50vh] lg:min-h-0 w-full">
       {/* ── Header Toolbar ───────────────────────────────────────────────── */}
       <div className="flex flex-wrap justify-between items-center gap-3 bg-[#FAFAF6] border-b border-[#E0DBCD] px-5 py-3.5 z-10 shrink-0">
         <div className="flex items-center gap-2">
@@ -1313,14 +1313,16 @@ export default function FloorPlanCanvas({
       </div>
 
       {/* ── Main Canvas Area (Constrained viewport, fits 1 page!) ─────────── */}
-      <div className="flex-1 min-h-0 bg-[#F5F3EF] relative flex items-center justify-center p-4 overflow-hidden">
-        <svg
-          ref={svgRef}
-          viewBox={`0 0 ${viewW} ${viewH}`}
-          className="max-w-full max-h-full drop-shadow-md select-none"
-        >
-          {renderSVGContent()}
-        </svg>
+      <div className="flex-1 min-h-0 bg-[#F5F3EF] relative overflow-hidden">
+        <div className="absolute inset-0 p-4 flex items-center justify-center">
+          <svg
+            ref={svgRef}
+            viewBox={`0 0 ${viewW} ${viewH}`}
+            className="w-full h-full max-w-full max-h-full drop-shadow-md select-none"
+          >
+            {renderSVGContent()}
+          </svg>
+        </div>
       </div>
 
       {/* ── Warnings Notice Banner ── */}
