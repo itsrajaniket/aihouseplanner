@@ -11,8 +11,8 @@ interface InputFormProps {
 }
 
 export default function InputForm({ onSubmit, isLoading, lockedEngine }: InputFormProps) {
-  const [lengthFt, setLengthFt] = useState<number>(30);
-  const [breadthFt, setBreadthFt] = useState<number>(40);
+  const [lengthFt, setLengthFt] = useState<number | string>(30);
+  const [breadthFt, setBreadthFt] = useState<number | string>(40);
   const [orientation, setOrientation] = useState<string>("North");
   const [roadFacing, setRoadFacing] = useState<string>("North");
   
@@ -64,8 +64,8 @@ export default function InputForm({ onSubmit, isLoading, lockedEngine }: InputFo
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
-      lengthFt,
-      breadthFt,
+      lengthFt: Number(lengthFt) || 30,
+      breadthFt: Number(breadthFt) || 40,
       orientation: orientation as any,
       roadFacing: roadFacing as any,
       bedrooms,
@@ -126,7 +126,8 @@ export default function InputForm({ onSubmit, isLoading, lockedEngine }: InputFo
               min={15}
               max={100}
               value={lengthFt}
-              onChange={(e) => setLengthFt(Math.max(15, Math.min(100, Number(e.target.value))))}
+              onChange={(e) => setLengthFt(e.target.value)}
+              onBlur={() => setLengthFt(Math.max(15, Math.min(100, Number(lengthFt) || 15)))}
               className="w-20 text-right font-mono text-sm font-bold border border-[#e0dbcd] rounded-lg px-2 py-1.5 focus:border-[#2c3539] focus:ring-1 focus:ring-[#2c3539] outline-none text-[#2c3539] bg-white transition-all shadow-sm"
             />
           </div>
@@ -149,7 +150,8 @@ export default function InputForm({ onSubmit, isLoading, lockedEngine }: InputFo
               min={15}
               max={100}
               value={breadthFt}
-              onChange={(e) => setBreadthFt(Math.max(15, Math.min(100, Number(e.target.value))))}
+              onChange={(e) => setBreadthFt(e.target.value)}
+              onBlur={() => setBreadthFt(Math.max(15, Math.min(100, Number(breadthFt) || 15)))}
               className="w-20 text-right font-mono text-sm font-bold border border-[#e0dbcd] rounded-lg px-2 py-1.5 focus:border-[#2c3539] focus:ring-1 focus:ring-[#2c3539] outline-none text-[#2c3539] bg-white transition-all shadow-sm"
             />
           </div>

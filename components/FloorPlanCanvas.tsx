@@ -1494,14 +1494,14 @@ export default function FloorPlanCanvas({
           </div>
 
           {/* Modal Canvas (With Scrollbars & Dynamic Sizing!) */}
-          <div className="flex-1 overflow-auto flex items-center justify-center p-8 bg-[#18191B] min-h-0 min-w-0">
+          <div className="flex-1 overflow-auto p-8 bg-[#18191B] min-h-0 min-w-0 flex">
             <div
               style={{
                 width: `${viewW * zoom}px`,
                 height: `${viewH * zoom}px`,
                 transition: "width 0.1s ease-out, height 0.1s ease-out",
               }}
-              className="relative flex items-center justify-center select-none shadow-2xl bg-[#F5F3EF] rounded-xl border border-stone-800"
+              className="m-auto relative flex items-center justify-center select-none shadow-2xl bg-[#F5F3EF] rounded-xl border border-stone-800"
             >
               <svg
                 ref={svgFullscreenRef}
