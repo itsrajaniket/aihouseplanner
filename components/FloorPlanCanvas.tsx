@@ -1338,13 +1338,13 @@ export default function FloorPlanCanvas({
       )}
 
       {/* ── Legend Bar ───────────────────────────────────────────────────── */}
-      <div className="bg-[#FAFAF6] border-t border-[#E0DBCD] px-5 py-2.5 shrink-0">
-        <div className="flex flex-wrap gap-x-5 gap-y-1.5 items-center">
-          <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+      <div className="bg-[#FAFAF6] border-t border-[#E0DBCD] px-4 py-1.5 shrink-0">
+        <div className="flex flex-wrap gap-x-3.5 gap-y-1 items-center">
+          <span className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">
             Legend:
           </span>
-          <div className="flex items-center gap-1.5 text-xs text-[#37474F] font-medium">
-            <div className="w-3 h-3 bg-[#334155] border border-[#1E293B]" />
+          <div className="flex items-center gap-1 text-[11px] text-[#37474F] font-medium">
+            <div className="w-2.5 h-2.5 bg-[#334155] border border-[#1E293B]" />
             <span>Structural Wall</span>
           </div>
           {rooms
@@ -1357,10 +1357,10 @@ export default function FloorPlanCanvas({
               return (
                 <div
                   key={`leg-${room.id}`}
-                  className="flex items-center gap-1 text-xs text-[#37474F] font-medium"
+                  className="flex items-center gap-1 text-[11px] text-[#37474F] font-medium"
                 >
                   <div
-                    className="w-3.5 h-3.5 rounded border"
+                    className="w-2.5 h-2.5 rounded border"
                     style={{ background: s.bg, borderColor: s.border }}
                   />
                   <span>
@@ -1370,32 +1370,32 @@ export default function FloorPlanCanvas({
               );
             })}
         </div>
-        <div className="flex flex-wrap gap-4 mt-2 text-[10px] text-stone-400 font-medium">
+        <div className="flex flex-wrap gap-3 mt-1 text-[9.5px] text-stone-400 font-medium">
           <span className="flex items-center gap-1">
             <span
-              className="inline-block w-4 h-0 border-b-[2px] border-dashed"
+              className="inline-block w-3.5 h-0 border-b-[1.5px] border-dashed"
               style={{ borderColor: "#16A34A" }}
             ></span>
             Main Entry Path
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#16A34A]"></span>
+            <span className="inline-block w-2 h-2 rounded-full bg-[#16A34A]"></span>
             Road Gate
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#2563EB]"></span>
+            <span className="inline-block w-2 h-2 rounded-full bg-[#2563EB]"></span>
             Main Door (★)
           </span>
           <span className="flex items-center gap-1">
             <span
-              className="inline-block w-4 h-0 border-b-[2px]"
+              className="inline-block w-3.5 h-0 border-b-[1.5px]"
               style={{ borderColor: "#38BDF8" }}
             ></span>
             Window Aperture
           </span>
           <span className="flex items-center gap-1">
             <span
-              className="inline-block w-4 h-0 border-b-[2px]"
+              className="inline-block w-3.5 h-0 border-b-[1.5px]"
               style={{ borderColor: "#78350F" }}
             ></span>
             Swinging Door

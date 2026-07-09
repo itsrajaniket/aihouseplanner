@@ -7,7 +7,10 @@
 ![License](https://img.shields.io/badge/License-Private-red)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 
-Proportional residential 2D floor plan generation with structural staircase vertical locking and Vastu Shastra orientation rules
+Proportional residential 2D floor plan generation with structural staircase vertical locking and Vastu Shastra orientation rules.
+
+![AI House Map Planner Workspace](public/aihouseplan.png)
+*Figure 1: Main layout generator screen showing custom plot inputs, design engine switches, interactive canvas, Vastu indicators, and multi-floor planning option.*
 
 ---
 
@@ -40,16 +43,7 @@ AI house map planner is a web-based layout drafting tool designed for individual
 
 ## Live demo and visuals
 
-This application runs locally. The following graphics represent the dashboard panels and canvas interface of the editor:
-
-![Main dashboard workspace](./screenshots/dashboard_layout.png)
-*Figure 1: Main layout generator screen showing dimensions configuration, engine switches, and coordinate canvas.*
-
-![Multi-floor editor canvas](./screenshots/multi_floor_editor.png)
-*Figure 2: Multi-floor draft view displaying the first-floor layout with locked staircase coordinates.*
-
-> [!NOTE]
-> Developers: Replace the placeholder references in the `./screenshots/` directory with actual screenshots of your running application once you have completed the local installation.
+This application runs locally. The main workspace displays a control panel on the left with dimension sliders and building presets, accompanied by a dynamic SVG canvas on the right that renders room layouts in real-time.
 
 To run and see the application locally, execute the development command:
 ```bash
@@ -99,7 +93,7 @@ Then navigate to `http://localhost:3000` in your web browser.
 - **User experience**: Standard dimension sliders automatically adapt, preventing invalid overlapping layout configurations on tight plots.
 
 ### Proportional CAD rendering & dynamic labels ⭐
-- **What it does**: Uses area-based scaling factor parameters (<80, <120, <180 sq ft) and a position clamp helper (`clampedRect`) to prevent furniture symbols from overlapping walls. Adapts text size dynamically and abbrevates labels (e.g. `"MB"`, `"WC"`, `"K"`) in narrow room cells.
+- **What it does**: Uses area-based scaling factor parameters (<80, <120, <180 sq ft) and a position clamp helper (`clampedRect`) to prevent furniture symbols from overlapping walls. Adapts text size dynamically and abbreviates labels (e.g. `"MB"`, `"WC"`, `"K"`) in narrow room cells.
 - **User experience**: Blueprint drawings look highly professional, clear, and clean on any monitor size or screen resolution.
 
 ### Door & window geometry constraints
@@ -140,9 +134,11 @@ The application is structured as a client-server single-page Next.js web applica
 │   └── InputForm.tsx           # Settings panel containing plot configuration sliders and presets
 ├── lib/                        # Math libraries and verification utilities
 │   ├── generator.ts            # Procedural math layouts for ground and upper levels with staircase locks
+│   ├── solver.ts               # Layout tree solver, staircase vertical lock, and door/window generator
 │   ├── types.ts                # Shared TypeScript structures for PlotInputs, Room, Door, and FloorPlan
 │   └── validator.ts            # Geometric room overlap and plot boundary constraint evaluator
 └── public/                     # Static assets directory
+    ├── aihouseplan.png         # Main application visual display screenshot
     ├── file.svg                # File logo indicator
     ├── globe.svg               # Web globe icon
     ├── next.svg                # Next.js logo
@@ -156,24 +152,24 @@ The application is structured as a client-server single-page Next.js web applica
 
 ### State management
 
-State is centralized in the parent component [app/page.tsx](file:///c:/Users/ANIKET/Desktop/Aihouseplan/app/page.tsx) using React hooks. The application state stores inputs, floor plans, the current floor tab, loading states, and the locked engine type. This guarantees that coordinate updates immediately propagate to the canvas drawing interface.
+State is centralized in the parent component [app/page.tsx](file:///e:/may%202026%20destop/Aihouseplan/app/page.tsx) using React hooks. The application state stores inputs, floor plans, the current floor tab, loading states, and the locked engine type. This guarantees that coordinate updates immediately propagate to the canvas drawing interface.
 
-- `floors`: An array containing up to three [FloorPlan](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/types.ts) objects or `null` representing ground, first, and second floors.
+- `floors`: An array containing up to three [FloorPlan](file:///e:/may%202026%20destop/Aihouseplan/lib/types.ts) objects or `null` representing ground, first, and second floors.
 - `activeFloor`: An integer index tracking the active layout level rendered on the canvas view.
 - `lockedEngine`: A state lock storing `"ai"` or `"procedural"` once generation starts, preventing mismatching layout rules.
 
 ### Data flow walkthrough — generating layout plans
 
-1. The user selects plot dimensions and orientation inputs in [components/InputForm.tsx](file:///c:/Users/ANIKET/Desktop/Aihouseplan/components/InputForm.tsx) and clicks the generation action button, calling [handleSubmit](file:///c:/Users/ANIKET/Desktop/Aihouseplan/components/InputForm.tsx).
-2. [handleSubmit](file:///c:/Users/ANIKET/Desktop/Aihouseplan/components/InputForm.tsx) triggers the callback prop `onSubmit`, forwarding a [PlotInputs](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/types.ts) object to [handleGenerate](file:///c:/Users/ANIKET/Desktop/Aihouseplan/app/page.tsx) in [app/page.tsx](file:///c:/Users/ANIKET/Desktop/Aihouseplan/app/page.tsx).
-3. [handleGenerate](file:///c:/Users/ANIKET/Desktop/Aihouseplan/app/page.tsx) updates the `isLoading` state to true, clears the `floors` state array to `[null, null, null]`, resets `activeFloor` to `0`, and triggers a POST request to the server route `/api/generate` with the parameters and `floor: 0`.
-4. The handler inside [app/api/generate/route.ts](file:///c:/Users/ANIKET/Desktop/Aihouseplan/app/api/generate/route.ts) parses the JSON payload.
-5. If the request calls for the procedural engine or lacks a `GEMINI_API_KEY` environment variable, the handler invokes [generateLocalLayout](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/generator.ts) inside [lib/generator.ts](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/generator.ts).
+1. The user selects plot dimensions and orientation inputs in [components/InputForm.tsx](file:///e:/may%202026%20destop/Aihouseplan/components/InputForm.tsx) and clicks the generation action button, calling [handleSubmit](file:///e:/may%202026%20destop/Aihouseplan/components/InputForm.tsx).
+2. [handleSubmit](file:///e:/may%202026%20destop/Aihouseplan/components/InputForm.tsx) triggers the callback prop `onSubmit`, forwarding a [PlotInputs](file:///e:/may%202026%20destop/Aihouseplan/lib/types.ts) object to [handleGenerate](file:///e:/may%202026%20destop/Aihouseplan/app/page.tsx) in [app/page.tsx](file:///e:/may%202026%20destop/Aihouseplan/app/page.tsx).
+3. [handleGenerate](file:///e:/may%202026%20destop/Aihouseplan/app/page.tsx) updates the `isLoading` state to true, clears the `floors` state array to `[null, null, null]`, resets `activeFloor` to `0`, and triggers a POST request to the server route `/api/generate` with the parameters and `floor: 0`.
+4. The handler inside [app/api/generate/route.ts](file:///e:/may%202026%20destop/Aihouseplan/app/api/generate/route.ts) parses the JSON payload.
+5. If the request calls for the procedural engine or lacks a `GEMINI_API_KEY` environment variable, the handler invokes [generateLocalLayout](file:///e:/may%202026%20destop/Aihouseplan/lib/generator.ts) inside [lib/generator.ts](file:///e:/may%202026%20destop/Aihouseplan/lib/generator.ts).
 6. If the request calls for the AI engine, the handler initializes `GoogleGenerativeAI`, connects to the `gemini-2.5-flash` model, passes the system prompt configurations enforcing the schema, and extracts the generated JSON coordinates.
-7. The coordinates are parsed and evaluated by [validateFloorPlan](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/validator.ts) in [lib/validator.ts](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/validator.ts).
-8. If validation fails, the handler falls back to procedural rules by calling [generateLocalLayout](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/generator.ts). If it passes, it returns the generated JSON array.
-9. [handleGenerate](file:///c:/Users/ANIKET/Desktop/Aihouseplan/app/page.tsx) updates the `floors` state array with the new floor coordinates, locks the generator engine state, and resets `isLoading` to false.
-10. The updated `floors` state triggers a canvas redraw inside [components/FloorPlanCanvas.tsx](file:///c:/Users/ANIKET/Desktop/Aihouseplan/components/FloorPlanCanvas.tsx).
+7. The coordinates are parsed and evaluated by [validateFloorPlan](file:///e:/may%202026%20destop/Aihouseplan/lib/validator.ts) in [lib/validator.ts](file:///e:/may%202026%20destop/Aihouseplan/lib/validator.ts).
+8. If validation fails, the handler falls back to procedural rules by calling [generateLocalLayout](file:///e:/may%202026%20destop/Aihouseplan/lib/generator.ts). If it passes, it returns the generated JSON array.
+9. [handleGenerate](file:///e:/may%202026%20destop/Aihouseplan/app/page.tsx) updates the `floors` state array with the new floor coordinates, locks the generator engine state, and resets `isLoading` to false.
+10. The updated `floors` state triggers a canvas redraw inside [components/FloorPlanCanvas.tsx](file:///e:/may%202026%20destop/Aihouseplan/components/FloorPlanCanvas.tsx).
 
 ---
 
@@ -299,18 +295,18 @@ Open `http://localhost:3000` in your web browser. You should see the user settin
 
 ### Usable margin adjustments
 
-To modify the outer setback margin surrounding the rooms, open [lib/generator.ts](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/generator.ts) and edit the setback `S` defined inside `checkGeometry` and `generateLocalLayout` (default is `0.5` ft for narrow plots <= 22 ft and `1.5` ft for wide plots):
+To modify the outer setback margin surrounding the rooms, open [lib/generator.ts](file:///e:/may%202026%20destop/Aihouseplan/lib/generator.ts) and edit the setback `S` defined inside `checkGeometry` and `generateLocalLayout` (default is `0.5` ft for narrow plots <= 22 ft and `1.5` ft for wide plots):
 ```typescript
 const S = W <= 22 ? 0.5 : 1.5;
 ```
 
 ### Minimum size bounds for rooms
 
-To adjust baseline room sizing dimensions, edit the minimum width and height values in the `getMinArea` function inside [lib/generator.ts](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/generator.ts) and their validation counterparts inside `validateFloorPlan` in [lib/validator.ts](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/validator.ts) (e.g. Master Bedroom: 11x12 ft, Kitchen: 7x9 ft, Bathroom: 4x6 ft, Staircase: 3.5x8 ft).
+To adjust baseline room sizing dimensions, edit the minimum width and height values in the `getMinArea` function inside [lib/generator.ts](file:///e:/may%202026%20destop/Aihouseplan/lib/generator.ts) and their validation counterparts inside `validateFloorPlan` in [lib/validator.ts](file:///e:/may%202026%20destop/Aihouseplan/lib/validator.ts) (e.g. Master Bedroom: 11x12 ft, Kitchen: 7x9 ft, Bathroom: 4x6 ft, Staircase: 3.5x8 ft).
 
 ### SVG scale unit configurations
 
-To alter the SVG canvas scaling factor, edit the constant inside [components/FloorPlanCanvas.tsx](file:///c:/Users/ANIKET/Desktop/Aihouseplan/components/FloorPlanCanvas.tsx):
+To alter the SVG canvas scaling factor, edit the constant inside [components/FloorPlanCanvas.tsx](file:///e:/may%202026%20destop/Aihouseplan/components/FloorPlanCanvas.tsx):
 ```typescript
 // Change coordinates scale units calculation (default 20 SVG units = 1 foot)
 const SC = 20;
@@ -343,7 +339,7 @@ const SC = 20;
 - **Credential storage**: The `GEMINI_API_KEY` is loaded from a local environment file `.env.local` and processed server-side in Next.js API route handlers. It is never exposed, logged, or sent to the client browser.
 - **Data storage & tracking**: No user configuration inputs, plot sizes, or layout calculations are stored in databases. All configurations are handled in-memory and discarded upon closing the tab session. No analytics tracking code is active in the codebase.
 - **Third-party transmission**: Generating layout coordinates via the AI engine sends plot boundaries, selected rooms, and style choices directly to Google Gemini API servers.
-- **API limits warning**: Under heavy rate-limiting on Gemini developer API keys, the application automatically falls back to local rules-based procedural layouts ([lib/generator.ts](file:///c:/Users/ANIKET/Desktop/Aihouseplan/lib/generator.ts)) to ensure the workspace remains responsive.
+- **API limits warning**: Under heavy rate-limiting on Gemini developer API keys, the application automatically falls back to local rules-based procedural layouts ([lib/generator.ts](file:///e:/may%202026%20destop/Aihouseplan/lib/generator.ts)) to ensure the workspace remains responsive.
 
 ---
 
